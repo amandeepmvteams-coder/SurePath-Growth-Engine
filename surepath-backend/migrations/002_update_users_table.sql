@@ -1,0 +1,6 @@
+ALTER TABLE users
+ADD COLUMN username VARCHAR(100),
+ADD COLUMN last_login_at TIMESTAMPTZ;
+
+ALTER TABLE users
+RENAME COLUMN name TO display_name;
