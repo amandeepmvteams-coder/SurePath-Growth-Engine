@@ -29,8 +29,10 @@ const router = Router();
 router.use(requireApiKey);
 
 // Get All Merchants Route
-router.get("/", getMerchantsValidator, validate
-    , merchantController.getAll);
+router.get("/", requireSession,
+    getMerchantsValidator,
+    validate,
+    merchantController.getAll);
 
 // Exports Route 
 
@@ -44,9 +46,9 @@ router.get(
 
 
 // Merchants Profile Routes 
-
 router.get(
     "/:id/profile",
+    requireSession,
     merchantProfileController.getByMerchantId
 );
 
@@ -63,6 +65,7 @@ router.patch(
 
 router.get(
     "/:id/contacts",
+    requireSession,
     merchantContactController.getByMerchantId
 );
 
@@ -93,6 +96,7 @@ router.delete(
 
 router.get(
     "/:id/notes",
+    requireSession,
     merchantNoteController.getByMerchantId
 );
 
@@ -114,6 +118,7 @@ router.delete(
 
 router.get(
     "/:id/activities",
+    requireSession,
     merchantActivityController.getByMerchantId
 );
 
@@ -129,6 +134,7 @@ router.post(
 
 router.get(
     "/:id/tasks",
+    requireSession,
     merchantTaskController.getByMerchantId
 );
 
@@ -143,6 +149,7 @@ router.post(
 // Merchants Detections Routes 
 router.get(
     "/:id/detections",
+    requireSession,
     merchantDetectionController.getByMerchantId
 );
 
@@ -165,6 +172,7 @@ router.patch(
 // Merchants Score Route
 router.get(
     "/:id/scores",
+    requireSession,
     merchantScoreController.getByMerchantId
 );
 
@@ -188,10 +196,13 @@ router.get(
 
 // Merchants Routes 
 
-router.get("/:id", merchantController.getById);
+router.get("/:id",
+    requireSession,
+    merchantController.getById);
 
 router.post(
     "/",
+    requireSession,
     createMerchantValidator,
     validate,
     merchantController.create
@@ -205,7 +216,9 @@ router.patch(
     merchantController.update
 );
 
-router.delete("/:id", merchantController.delete);
+router.delete("/:id",
+    requireSession,
+    merchantController.delete);
 
 
 
