@@ -58,7 +58,7 @@ export default async function MerchantPage({
                         href={`https://${merchant.domain}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex max-w-full items-center gap-1 break-words hover:text-foreground"
+                        className="inline-flex max-w-full items-center gap-1 wrap-break-word hover:text-foreground"
                     >
                         {merchant.domain} ↗️
 
