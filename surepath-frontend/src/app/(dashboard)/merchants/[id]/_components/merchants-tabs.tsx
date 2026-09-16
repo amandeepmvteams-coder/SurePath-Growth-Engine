@@ -34,7 +34,7 @@ export default function MerchantTabs({
         <Tabs defaultValue="overview" className="w-full gap-5">
             <TabsList
                 variant="line"
-                className="h-9! w-full max-w-full justify-start overflow-x-auto rounded-none border-b-2 p-0 lg:w-1/2 sm:justify-between"
+                className="h-9! w-full max-w-full justify-start overflow-x-auto overflow-y-hidden rounded-none border-b-2 p-0 sm:justify-between lg:w-1/2"
             >
                 <TabsTrigger value="overview" className="min-w-22 flex-1">
                     Overview
