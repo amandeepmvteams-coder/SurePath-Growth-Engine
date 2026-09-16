@@ -1,3 +1,4 @@
+import "./network";
 import { Pool, PoolClient } from "pg";
 import dotenv from "dotenv";
 
@@ -30,4 +31,3 @@ export async function withTransaction<T>(
     client.release();
   }
 }
-

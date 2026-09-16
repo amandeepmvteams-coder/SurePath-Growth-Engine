@@ -1,10 +1,8 @@
-import dotenv from "dotenv";
+import "./config/network";
 import app from "./app";
 import "./config/database";
 
 import { bootstrapService } from "./services/bootstrap.service";
-
-dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 
