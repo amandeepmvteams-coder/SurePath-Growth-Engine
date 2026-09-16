@@ -104,15 +104,15 @@ export default function ActivityTab({
                         <div className="space-y-4">
 
                             {/* What + Direction */}
-                            <div className="flex justify-start items-center gap-3">
-                                <div className="space-y-2">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                <div className="min-w-0 space-y-2">
                                     <Label className="text-xs">What</Label>
 
                                     <Select
                                         value={outreachType}
                                         onValueChange={setOutreachType}
                                     >
-                                        <SelectTrigger className="h-9!">
+                                        <SelectTrigger className="h-9! w-full">
                                             <SelectValue />
                                         </SelectTrigger>
 
@@ -125,14 +125,14 @@ export default function ActivityTab({
                                     </Select>
                                 </div>
 
-                                <div className="space-y-2">
+                                <div className="min-w-0 space-y-2">
                                     <Label className="text-xs">Direction</Label>
 
                                     <Select
                                         value={direction}
                                         onValueChange={setDirection}
                                     >
-                                        <SelectTrigger className="h-9!">
+                                        <SelectTrigger className="h-9! w-full">
                                             <SelectValue />
                                         </SelectTrigger>
 
@@ -148,26 +148,26 @@ export default function ActivityTab({
                                     </Select>
                                 </div>
                                 {/* Channel */}
-                                <div className="space-y-2">
+                                <div className="min-w-0 space-y-2">
                                     <Label className="text-xs">Channel</Label>
 
                                     <Input
                                         value={channel}
                                         onChange={(e) => setChannel(e.target.value)}
                                         placeholder="phone, email, LinkedIn..."
-                                        className="h-9!"
+                                        className="h-9! w-full min-w-0"
                                     />
                                 </div>
 
                                 {/* When */}
-                                <div className="space-y-2">
+                                <div className="min-w-0 space-y-2">
                                     <Label className="text-xs">When</Label>
 
                                     <Input
                                         type="datetime-local"
                                         value={when}
                                         onChange={(e) => setWhen(e.target.value)}
-                                        className="h-9!"
+                                        className="h-9! w-full min-w-0"
                                     />
                                 </div>
                             </div>
@@ -199,7 +199,7 @@ export default function ActivityTab({
                             </div>
 
                             {/* Actions */}
-                            <div className="flex justify-end gap-2">
+                            <div className="flex flex-wrap justify-end gap-2">
                                 <Button
                                     variant="outline"
                                     size="sm"

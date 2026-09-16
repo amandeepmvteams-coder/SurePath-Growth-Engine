@@ -34,25 +34,25 @@ export default function MerchantTabs({
         <Tabs defaultValue="overview" className="w-full gap-5">
             <TabsList
                 variant="line"
-                className="h-9! w-1/2 justify-between rounded-none border-b-2 p-0"
+                className="h-9! w-full max-w-full justify-start overflow-x-auto rounded-none border-b-2 p-0 lg:w-1/2 sm:justify-between"
             >
-                <TabsTrigger value="overview" className="flex-1">
+                <TabsTrigger value="overview" className="min-w-22 flex-1">
                     Overview
                 </TabsTrigger>
 
-                <TabsTrigger value="policies" className="flex-1">
+                <TabsTrigger value="policies" className="min-w-22 flex-1">
                     Policies
                 </TabsTrigger>
 
-                <TabsTrigger value="tasks" className="flex-1">
+                <TabsTrigger value="tasks" className="min-w-22 flex-1">
                     Tasks
                 </TabsTrigger>
 
-                <TabsTrigger value="notes" className="flex-1">
+                <TabsTrigger value="notes" className="min-w-22 flex-1">
                     Notes
                 </TabsTrigger>
 
-                <TabsTrigger value="activity" className="flex-1">
+                <TabsTrigger value="activity" className="min-w-22 flex-1">
                     Activity
                     <span className="ml-1">
                         {activities.length}

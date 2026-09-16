@@ -82,17 +82,17 @@ export default function TasksTab() {
                                 key={task.id}
                                 className="rounded-md border px-3 py-2"
                             >
-                                <p className="text-sm font-medium">
+                                <p className="break-words text-sm font-medium">
                                     {task.title}
                                 </p>
 
                                 {task.details && (
-                                    <p className="mt-1 text-xs text-muted-foreground">
+                                    <p className="mt-1 break-words text-xs text-muted-foreground">
                                         {task.details}
                                     </p>
                                 )}
 
-                                <div className="mt-2 flex gap-3 text-xs text-muted-foreground">
+                                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                                     <span>{task.assignee}</span>
 
                                     {task.dueDate && (
@@ -122,13 +122,13 @@ export default function TasksTab() {
                         className="h-9"
                     />
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         {/* Assignee */}
                         <Select
                             value={assignee}
                             onValueChange={setAssignee}
                         >
-                            <SelectTrigger className="h-9 w-27.5">
+                            <SelectTrigger className="h-9 w-full sm:w-27.5">
                                 <SelectValue />
                             </SelectTrigger>
 
@@ -156,14 +156,14 @@ export default function TasksTab() {
                             type="date"
                             value={dueDate}
                             onChange={(e) => setDueDate(e.target.value)}
-                            className="h-9 w-35"
+                            className="h-9 w-full sm:w-35"
                         />
 
                         {/* Add */}
                         <Button
                             type="button"
                             size="sm"
-                            className="h-9 bg-foreground px-3 text-xs text-background hover:bg-foreground/90"
+                            className="h-9 w-full bg-foreground px-3 text-xs text-background hover:bg-foreground/90 sm:w-auto"
                             onClick={handleAddTask}
                         >
                             Add task
@@ -174,7 +174,7 @@ export default function TasksTab() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-9 px-3 text-xs"
+                            className="h-9 w-full px-3 text-xs sm:w-auto"
                             onClick={handleCancel}
                         >
                             Cancel

@@ -58,7 +58,7 @@ export default async function MerchantPage({
                         href={`https://${merchant.domain}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1  hover:text-foreground"
+                        className="inline-flex max-w-full items-center gap-1 break-words hover:text-foreground"
                     >
                         {merchant.domain} ↗️
 
@@ -103,9 +103,9 @@ export default async function MerchantPage({
                 <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Sales
                 </p>
-                <CardContent className="flex items-end justify-between p-0 ">
+                <CardContent className="flex flex-col gap-4 p-0 sm:flex-row sm:items-end sm:justify-between">
 
-                    <div className="flex gap-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
                         {/* Assigned To */}
                         <div className="space-y-2">
                             <Label className="text-xs text-muted-foreground">
@@ -113,7 +113,7 @@ export default async function MerchantPage({
                             </Label>
 
                             <Select defaultValue={merchant.owner ?? "Unassigned"}>
-                                <SelectTrigger className="h-9 w-40">
+                                <SelectTrigger className="h-9 w-full sm:w-40">
                                     <SelectValue placeholder="Select owner" />
                                 </SelectTrigger>
 
@@ -142,13 +142,13 @@ export default async function MerchantPage({
                             <input
                                 id="follow-up"
                                 type="date"
-                                className="h-9 rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                                className="h-9 max-w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
                             />
                         </div>
                     </div>
 
                     {/* Last Activity */}
-                    <div className=" flex justify-baseline items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-left sm:justify-end">
                         <p className="text-xs text-muted-foreground/70">
                             Last activity
                         </p>
@@ -161,10 +161,10 @@ export default async function MerchantPage({
             </Card>
             {/* Merchant Summary Stats */}
             <Card>
-                <CardContent className="grid grid-cols-4 p-0">
+                <CardContent className="grid grid-cols-1 p-0 sm:grid-cols-2 lg:grid-cols-4">
 
                     {/* Fit */}
-                    <div className="border-r px-4 py-4">
+                    <div className="border-b px-4 py-4 sm:border-r sm:border-b-0 lg:border-b-0">
                         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                             Fit
                         </p>
@@ -175,7 +175,7 @@ export default async function MerchantPage({
                     </div>
 
                     {/* Provider */}
-                    <div className="border-r px-4 py-4">
+                    <div className="border-b px-4 py-4 sm:border-b-0 lg:border-r">
                         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                             Provider
                         </p>
@@ -186,7 +186,7 @@ export default async function MerchantPage({
                     </div>
 
                     {/* Contacts */}
-                    <div className="border-r px-4 py-4">
+                    <div className="border-b px-4 py-4 sm:border-r sm:border-b-0">
                         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                             Contacts
                         </p>

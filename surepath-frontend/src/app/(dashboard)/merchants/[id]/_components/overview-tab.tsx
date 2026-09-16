@@ -12,7 +12,7 @@ export default function OverviewTab({
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
 
             {/* Left Column */}
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-4">
                 {/* Fit Score */}
                 <Card>
                     <CardContent className="p-0">
@@ -45,8 +45,8 @@ export default function OverviewTab({
                         {/* Content */}
                         <div className="space-y-3 px-4 py-4">
                             {/* Status */}
-                            <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                                <span className="size-1.5 rounded-full bg-success" />
+                            <div className="flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                                <span className="mt-1 size-1.5 shrink-0 rounded-full bg-success" />
 
                                 <span>
                                     No provider found. A fresh prospect — there is no incumbent to displace.
@@ -85,7 +85,7 @@ export default function OverviewTab({
             </div>
 
             {/* Right Column */}
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-4">
                 {/* Opportunity */}
                 <Card>
                     <CardContent className="p-0">
@@ -128,7 +128,7 @@ export default function OverviewTab({
                                 <p className="text-xs font-medium uppercase text-muted-foreground">
                                     Platform
                                 </p>
-                                <p className="mt-1 text-sm">
+                                <p className="mt-1 break-words text-sm">
                                     {merchant.shopify ? "Shopify" : "Unknown"}
                                 </p>
                             </div>
@@ -137,7 +137,7 @@ export default function OverviewTab({
                                 <p className="text-xs font-medium uppercase text-muted-foreground">
                                     Shopify confidence
                                 </p>
-                                <p className="mt-1 text-sm">
+                                <p className="mt-1 break-words text-sm">
                                     {merchant.shopify !== undefined
                                         ? `${merchant.shopify}%`
                                         : "—"}
@@ -148,7 +148,7 @@ export default function OverviewTab({
                                 <p className="text-xs font-medium uppercase text-muted-foreground">
                                     Country
                                 </p>
-                                <p className="mt-1 text-sm">
+                                <p className="mt-1 break-words text-sm">
                                     {merchant.country}
                                 </p>
                             </div>
@@ -157,7 +157,7 @@ export default function OverviewTab({
                                 <p className="text-xs font-medium uppercase text-muted-foreground">
                                     Industry
                                 </p>
-                                <p className="mt-1 text-sm">
+                                <p className="mt-1 break-words text-sm">
                                     {merchant.industry}
                                 </p>
                             </div>
@@ -166,7 +166,7 @@ export default function OverviewTab({
                                 <p className="text-xs font-medium uppercase text-muted-foreground">
                                     Source
                                 </p>
-                                <p className="mt-1 text-sm">
+                                <p className="mt-1 break-words text-sm">
                                     {merchant.source}
                                 </p>
                             </div>
@@ -175,7 +175,7 @@ export default function OverviewTab({
                                 <p className="text-xs font-medium uppercase text-muted-foreground">
                                     Last researched
                                 </p>
-                                <p className="mt-1 text-sm">
+                                <p className="mt-1 break-words text-sm">
                                     {merchant.lastActivity ?? "—"}
                                 </p>
                             </div>
