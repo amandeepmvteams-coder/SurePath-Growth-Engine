@@ -7,11 +7,13 @@ import {
 import {
     requireSession,
 } from "../middleware/auth.middleware";
+import { requireApiKey } from "../middleware/api-key.middleware";
 
 const router = Router();
 
 router.get(
     "/",
+    requireApiKey,
     requireSession,
     getIndustries
 );

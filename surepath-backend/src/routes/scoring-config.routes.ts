@@ -3,6 +3,8 @@ import { scoringConfigController } from "../controllers/scoring-config.controlle
 import { updateScoringConfigValidator } from "../validators/scoring-config.validator";
 import { validate } from "../middleware/validation.middleware";
 import { requireSession } from "../middleware/auth.middleware";
+import { requireApiKey } from "../middleware/api-key.middleware";
+import { requireAdmin } from "../middleware/role.middleware";
 
 const router = Router();
 
@@ -13,7 +15,9 @@ router.get(
 
 router.put(
   "/config",
+  requireApiKey,
   requireSession,
+  requireAdmin,
   updateScoringConfigValidator,
   validate,
   scoringConfigController.updateConfig
@@ -21,6 +25,8 @@ router.put(
 
 router.get(
   "/configs",
+  requireApiKey,
+  requireSession,
   scoringConfigController.getConfigHistory
 );
 

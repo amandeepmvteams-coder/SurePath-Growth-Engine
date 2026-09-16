@@ -136,8 +136,14 @@ export const changePassword = async (
             });
         }
 
+        if (req.user.username !== username) {
+            return res.status(403).json({
+                message: "Forbidden",
+            });
+        }
+
         await authService.changePassword(
-            username,
+            req.user.id,
             current_password,
             new_password
         );

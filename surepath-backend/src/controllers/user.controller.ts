@@ -79,6 +79,18 @@ export const getUserById = async (
             ? req.params.id[0]
             : req.params.id;
 
+        if (!req.user) {
+            return res.status(401).json({
+                message: "Authentication required",
+            });
+        }
+
+        if (req.user.role !== "admin" && req.user.id !== id) {
+            return res.status(403).json({
+                message: "Forbidden",
+            });
+        }
+
         const user = await userService.getUserById(id);
 
         if (!user) {

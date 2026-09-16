@@ -80,12 +80,11 @@ export const authService = {
     },
 
     async changePassword(
-        username: string,
+        userId: string,
         currentPassword: string,
         newPassword: string
     ): Promise<void> {
-        const user =
-            await userRepository.findByUsername(username);
+        const user = await userRepository.findById(userId);
 
         if (!user) {
             throw new Error("Credentials were not accepted");

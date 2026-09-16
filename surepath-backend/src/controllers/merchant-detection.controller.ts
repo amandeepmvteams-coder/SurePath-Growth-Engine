@@ -97,7 +97,7 @@ export const merchantDetectionController = {
     >,
     res: Response
   ) {
-    const { detection_id } = req.params;
+    const { id, detection_id } = req.params;
 
     try {
       const data: UpdateMerchantDetectionData = {
@@ -110,6 +110,7 @@ export const merchantDetectionController = {
 
       const detection =
         await merchantDetectionService.update(
+          id,
           detection_id,
           data
         );

@@ -51,6 +51,7 @@ class MerchantDetectionService {
   }
 
   async update(
+    merchantId: string,
     detectionId: string,
     data: UpdateMerchantDetectionData
   ) {
@@ -58,6 +59,10 @@ class MerchantDetectionService {
       await merchantDetectionRepository.findById(detectionId);
 
     if (!existingDetection) {
+      return null;
+    }
+
+    if (existingDetection.merchant_id !== merchantId) {
       return null;
     }
 

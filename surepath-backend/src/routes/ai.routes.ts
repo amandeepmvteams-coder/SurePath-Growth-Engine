@@ -16,6 +16,8 @@ import {
 import {
     requireSession,
 } from "../middleware/auth.middleware";
+import { requireApiKey } from "../middleware/api-key.middleware";
+import { requireAdmin } from "../middleware/role.middleware";
 import { aiRunValidator } from "../validators/ai-run.validator";
 import { aiRunController } from "../controllers/ai-run.controller";
 
@@ -25,6 +27,7 @@ const router = Router();
 
 router.get(
     "/configs",
+    requireApiKey,
     requireSession,
     getAIConfigs
 );
@@ -32,13 +35,16 @@ router.get(
 
 router.put(
     "/configs",
+    requireApiKey,
     requireSession,
+    requireAdmin,
     updateAIConfigValidator,
     validate,
     updateAIConfig
 );
 
 router.post("/run",
+    requireApiKey,
     requireSession,
     aiRunValidator,
     validate,
