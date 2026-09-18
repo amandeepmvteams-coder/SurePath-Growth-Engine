@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { researchRunRepository } from "../repositories/research-run.repository";
+import { researchRunRepository } from "../repositories/research.repository";
 import { merchantRepository } from "../repositories/merchant.repository";
 
 class ResearchRunController {

@@ -10,34 +10,52 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
+import { login } from "@/features/auth/api/auth.api";
 export default function Page() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [keepSignedIn, setKeepSignedIn] = useState(false);
-
+    const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
+    const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (
+        event
+    ) => {
+        event.preventDefault();
 
-   const handleSubmit: SubmitEventHandler<HTMLFormElement> = (event) => {
-    event.preventDefault();
+        if (!username || !password) {
+            toast.error("Username and password are required");
+            return;
+        }
 
-    if (!username || !password) {
-        toast.error("Username and password are required");
-        return;
-    }
+        try {
+            setIsLoading(true);
 
-    const user = {
-        username,
-        role: "Admin",
-        initial: username.charAt(0).toUpperCase(),
+            const result = await login({
+                username,
+                password,
+            });
+
+            // console.log("Logged in user:", result.user);
+            
+            toast.success("Login successful!");
+
+            router.push("/dashboard");
+        } catch (error) {
+            console.error("Login failed:", error);
+
+            if (
+                error instanceof Error &&
+                error.message
+            ) {
+                toast.error("Credentials were not accepted");
+            } else {
+                toast.error("Something went wrong. Please try again.");
+            }
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    localStorage.setItem("user", JSON.stringify(user));
-
-    toast.success("Login successful!");
-
-    router.push("/dashboard");
-};
 
     return (
         <main className="min-h-screen bg-foreground">
@@ -87,6 +105,7 @@ export default function Page() {
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
                                         placeholder="admin"
+                                        disabled={isLoading}
                                         className="h-11 rounded-xl border-[#cfd2d6] bg-[#f7f7f7] placeholder:text-[#8b95a1] text-foreground pl-10 shadow-sm focus-visible:ring-1"
                                     />
                                 </div>
@@ -113,6 +132,7 @@ export default function Page() {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="••••••••"
+                                        disabled={isLoading}
                                         className="h-11 rounded-xl border-[#cfd2d6] bg-[#f7f7f7] pl-10 shadow-sm text-foreground
                                                  placeholder:text-[#8b95a1] focus-visible:ring-1"
                                     />
@@ -127,6 +147,7 @@ export default function Page() {
                                     onCheckedChange={(checked) =>
                                         setKeepSignedIn(checked === true)
                                     }
+                                    disabled={isLoading}
                                     className="border-black data-[state=checked]:border-black data-[state=checked]:bg-[#202124] data-[state=checked]:text-background"
                                 />
 
@@ -141,9 +162,12 @@ export default function Page() {
 
                             <Button
                                 type="submit"
+                                disabled={isLoading}
                                 className="h-11 w-full rounded-xl bg-[#202124] font-semibold text-white shadow-md transition-colors hover:bg-[#303136]"
                             >
-                                Sign in
+                                {isLoading
+                                    ? "Signing in..."
+                                    : "Sign in"}
                             </Button>
 
 

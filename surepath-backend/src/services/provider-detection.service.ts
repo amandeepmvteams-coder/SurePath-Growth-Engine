@@ -1,4 +1,4 @@
-import { researchPageRepository } from "../repositories/research-page.repository";
+import { researchPageRepository } from "../repositories/research-run.repository";
 import { ResearchPage } from "../types/research.types";
 
 interface ProviderDetectionResult {

@@ -1,10 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PageHeader from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Download, Play, Plus, Search, SearchX, Trash2 } from "lucide-react";
+import { Download, Plus, Search, SearchX } from "lucide-react";
 import AddMerchantDialog from "./_components/AddMerchantDialog";
 import { Input } from "@/components/ui/input";
+import { getMerchants, createMerchant, deleteMerchant, exportMerchants, } from "@/features/merchants/api/merchants.api";
+import type { Merchant } from "@/features/merchants/types/merchant.types";
 import {
     Select,
     SelectContent,
@@ -13,55 +15,31 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { countries, industries, merchantOwners, merchantStatuses } from "@/data/filter-options";
-import { CountryFilter, IndustryFilter, OwnerFilter, StatusFilter } from "@/types/merchant-types";
+import { Country, CountryFilter, Industry, IndustryFilter, OwnerFilter, StatusFilter } from "@/types/merchant-types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { merchants } from "@/data/merchants";
 import { Card } from "@/components/ui/card";
-import type { Merchant, Country, Industry } from "@/types/merchant-types";
 import { toast } from "sonner";
 import DeleteMerchantDialog from "./_components/DeleteMerchantDialog";
 import { useRouter } from "next/navigation";
+
+
 export default function Page() {
     const [open, setOpen] = useState<boolean>(false);
     const router = useRouter()
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-    const [merchantData, setMerchantData] = useState(merchants)
+    const [merchantData, setMerchantData] = useState<Merchant[]>([]);
+    const [totalMerchants, setTotalMerchants] = useState(0);
     const itemsPerPage = 10;
-    const [openDeleteDialogId, setOpenDeleteDialogId] = useState<number | null>(null);
-    // Handle Add Merchants Function 
+    const totalPages = Math.ceil(totalMerchants / itemsPerPage);
 
-    const handleAddMerchant = (newMerchant: {
-        domain: string;
-        store: string;
-        country: Country;
-        industry: Industry;
-    }) => {
-        const merchant: Merchant = {
-            id: Date.now(),
-            ...newMerchant,
-            status: "New",
-            owner: null,
-            lastActivity: "Just now",
-            shopify: undefined,
-            fit: undefined,
-            enrichment: undefined,
-            source: "Manual",
-        };
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [appliedSearchTerm, setAppliedSearchTerm] = useState("");
+    const [openDeleteDialogId, setOpenDeleteDialogId] =
+        useState<string | null>(null);
 
-        setMerchantData((prev) => [merchant, ...prev]);
-    };
-
-    // Handle Delete Merchant Function 
-
-    const handleDeleteMerchant = (id: number) => {
-        setMerchantData((prev) =>
-            prev.filter((merchant) => merchant.id !== id)
-        );
-
-        toast.success("Merchant deleted successfully");
-    };
     const [filters, setFilters] = useState({
         status: "all" as StatusFilter,
         owner: "all" as OwnerFilter,
@@ -71,64 +49,159 @@ export default function Page() {
 
     const [appliedFilters, setAppliedFilters] = useState(filters);
 
-    const handleApplyFilters = () => {
-        setAppliedFilters(filters);
+    // Handle Add Merchants Function 
+    useEffect(() => {
+        const loadMerchants = async () => {
+            try {
+                setIsLoading(true);
+                setError(null);
+
+                const result = await getMerchants({
+                    limit: itemsPerPage,
+                    offset: (currentPage - 1) * itemsPerPage,
+                    q: appliedSearchTerm || undefined,
+                    status:
+                        appliedFilters.status !== "all"
+                            ? appliedFilters.status
+                            : undefined,
+                    country:
+                        appliedFilters.country !== "all"
+                            ? appliedFilters.country
+                            : undefined,
+                    industry:
+                        appliedFilters.industry !== "all"
+                            ? appliedFilters.industry
+                            : undefined,
+                });
+
+                setMerchantData(result.data);
+                setTotalMerchants(result.pagination.total);
+            } catch (error) {
+                console.error("Failed to load merchants:", error);
+                setError("Failed to load merchants");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        void loadMerchants();
+    }, [currentPage, appliedFilters, appliedSearchTerm]);
+
+    const handleAddMerchant = async (newMerchant: {
+        domain: string;
+        store: string;
+        country: Country;
+        industry: Industry;
+    }) => {
+        try {
+            setIsLoading(true);
+
+            await createMerchant({
+                domain: newMerchant.domain,
+                store_name: newMerchant.store,
+                country: newMerchant.country,
+                industry: newMerchant.industry,
+            });
+
+            toast.success("Merchant added successfully");
+
+            setOpen(false);
+            setCurrentPage(1);
+
+            // Reload the first page so the new backend record appears.
+            const result = await getMerchants({
+                limit: itemsPerPage,
+                offset: 0,
+                q: appliedSearchTerm || undefined,
+                status:
+                    appliedFilters.status !== "all"
+                        ? appliedFilters.status
+                        : undefined,
+                country:
+                    appliedFilters.country !== "all"
+                        ? appliedFilters.country
+                        : undefined,
+                industry:
+                    appliedFilters.industry !== "all"
+                        ? appliedFilters.industry
+                        : undefined,
+            });
+
+            setMerchantData(result.data);
+            setTotalMerchants(result.pagination.total);
+        } catch (error) {
+            console.error("Failed to add merchant:", error);
+            toast.error("Failed to add merchant");
+        } finally {
+            setIsLoading(false);
+        }
     };
+
+    // Handle Delete Merchant Function 
+
+    const handleDeleteMerchant = async (id: string) => {
+        try {
+            setIsLoading(true);
+
+            await deleteMerchant(id);
+
+            toast.success("Merchant deleted successfully");
+
+            setMerchantData((prev) =>
+                prev.filter((merchant) => merchant.id !== id)
+            );
+
+            setOpenDeleteDialogId(null);
+        } catch (error) {
+            console.error("Failed to delete merchant:", error);
+            toast.error("Failed to delete merchant");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);
-        setCurrentPage(1);
     };
 
-    // Filltering Merchants Function 
-    const filteredMerchants = merchantData.filter((merchant) => {
-        const matchesSearch =
-            merchant.store
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase()) ||
-            merchant.domain
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase());
+    const handleApplyFilters = () => {
+        setCurrentPage(1);
+        setAppliedSearchTerm(searchTerm);
+        setAppliedFilters(filters);
+    };
 
-        const matchesStatus =
-            appliedFilters.status === "all" ||
-            merchant.status === appliedFilters.status;
+const handleExportMerchants = async () => {
+  try {
+    const blob = await exportMerchants();
 
-        const matchesOwner =
-            appliedFilters.owner === "all" ||
-            merchant.owner === appliedFilters.owner;
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
 
-        const matchesIndustry =
-            appliedFilters.industry === "all" ||
-            merchant.industry === appliedFilters.industry;
+    link.href = url;
+    link.download = "merchants.csv";
 
-        const matchesCountry =
-            appliedFilters.country === "all" ||
-            merchant.country === appliedFilters.country;
+    document.body.appendChild(link);
+    link.click();
 
-        return (
-            matchesSearch &&
-            matchesStatus &&
-            matchesOwner &&
-            matchesIndustry &&
-            matchesCountry
-        );
-    });
+    link.remove();
+    window.URL.revokeObjectURL(url);
 
-    const totalPages = Math.ceil(filteredMerchants.length / itemsPerPage);
+    toast.success("Merchants exported successfully");
+  } catch (error) {
+    console.error("Failed to export merchants:", error);
+    toast.error("Failed to export merchants");
+  }
+};
 
-    const startIndex = (currentPage - 1) * itemsPerPage;
 
-    const paginatedMerchants = filteredMerchants.slice(
-        startIndex,
-        startIndex + itemsPerPage
-    );
     return (
         <section className="w-full h-full space-y-4">
             {/* Headers and actions buttons */}
 
             <PageHeader
                 title="Merchants"
-                subtitle={`${merchantData.length} in the pipeline`}
+                subtitle={`${totalMerchants} in the pipeline`}
             >
                 <Button
                     onClick={() => setOpen(true)}
@@ -141,6 +214,7 @@ export default function Page() {
                 <Button
                     variant="outline"
                     className="w-full sm:w-auto"
+                    onClick={handleExportMerchants}
                 >
                     <Download className="size-4 text-foreground" />
                     Export CSV
@@ -284,197 +358,188 @@ export default function Page() {
             {/* Merchants Tables  */}
             <Card className="overflow-hidden">
                 <div className="w-full overflow-x-auto ">
-                    <Table className="min-w-275">
-                        <TableHeader>
-                            <TableRow className="hover:bg-transparent">
-                                <TableHead className="w-[12%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Domain
-                                </TableHead>
+                    {isLoading ? (
+                        <div className="flex h-40 items-center justify-center">
+                            Loading merchants...
+                        </div>
+                    ) : error ? (
+                        <div className="flex h-40 items-center justify-center">
+                            {error}
+                        </div>
+                    ) : (
+                        <Table className="min-w-275">
+                            <TableHeader>
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead className="w-[12%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                        Domain
+                                    </TableHead>
 
-                                <TableHead className="w-[11%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Store
-                                </TableHead>
+                                    <TableHead className="w-[11%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                        Store
+                                    </TableHead>
 
-                                <TableHead className="w-[7%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Country
-                                </TableHead>
+                                    <TableHead className="w-[7%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                        Country
+                                    </TableHead>
 
-                                <TableHead className="w-[12%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Industry
-                                </TableHead>
+                                    <TableHead className="w-[12%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                        Industry
+                                    </TableHead>
 
-                                <TableHead className="w-[7%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Status
-                                </TableHead>
+                                    <TableHead className="w-[7%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                        Status
+                                    </TableHead>
 
-                                <TableHead className="w-[6%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Owner
-                                </TableHead>
+                                    <TableHead className="w-[6%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                        Owner
+                                    </TableHead>
 
-                                <TableHead className="w-[10%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Last Activity
-                                </TableHead>
+                                    <TableHead className="w-[10%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                        Last Activity
+                                    </TableHead>
 
-                                <TableHead className="w-[8%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Shopify
-                                </TableHead>
+                                    <TableHead className="w-[8%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                        Shopify
+                                    </TableHead>
 
-                                <TableHead className="w-[7%] px-3 text-[10px] font-semibold text-center uppercase tracking-wider text-muted-foreground">
-                                    Fit
-                                </TableHead>
+                                    <TableHead className="w-[7%] px-3 text-[10px] font-semibold text-center uppercase tracking-wider text-muted-foreground">
+                                        Fit
+                                    </TableHead>
 
-                                <TableHead className="w-[7%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Source
-                                </TableHead>
+                                    <TableHead className="w-[7%] px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                        Source
+                                    </TableHead>
 
-                                <TableHead className="w-[13%] px-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Actions
-                                </TableHead>
-                            </TableRow>
-                        </TableHeader>
-
-                        <TableBody>
-                            {filteredMerchants.length === 0 ? (
-                                <TableRow>
-                                    <TableCell
-                                        colSpan={11}
-                                        className="h-52 text-center"
-                                    >
-                                        <div className="flex flex-col items-center justify-center gap-2">
-                                            <SearchX className="size-8 text-muted-foreground" />
-
-                                            <p className="font-medium text-foreground">
-                                                No merchants found
-                                            </p>
-
-                                            <p className="text-sm text-muted-foreground">
-                                                No merchants match your current search or filters.
-                                            </p>
-                                        </div>
-                                    </TableCell>
+                                    <TableHead className="w-[13%] px-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                        Actions
+                                    </TableHead>
                                 </TableRow>
-                            ) : (
-                                paginatedMerchants.map((merchant) => (
-                                    <TableRow
-                                        key={merchant.id}
-                                        className="h-13.5 hover:bg-muted/60 cursor-pointer"
-                                        onClick={() => {
-                                            if (openDeleteDialogId !== null) return;
+                            </TableHeader>
 
-                                            router.push(`/merchants/${merchant.id}`);
-                                        }}
-                                    >
-                                        <TableCell className="truncate px-3 py-2 text-xs font-semibold">
-                                            {merchant.domain}
-                                        </TableCell>
+                            <TableBody>
+                                {merchantData.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell
+                                            colSpan={11}
+                                            className="h-52 text-center"
+                                        >
+                                            <div className="flex flex-col items-center justify-center gap-2">
+                                                <SearchX className="size-8 text-muted-foreground" />
 
-                                        <TableCell className="truncate px-3 py-2 text-xs">
-                                            {merchant.store}
-                                        </TableCell>
+                                                <p className="font-medium text-foreground">
+                                                    No merchants found
+                                                </p>
 
-                                        <TableCell className="px-2 py-2 text-center text-xs">
-                                            {merchant.country}
-                                        </TableCell>
-
-                                        <TableCell className="truncate px-3 py-2 text-xs">
-                                            {merchant.industry || "—"}
-                                        </TableCell>
-
-                                        <TableCell className="px-3 py-2">
-                                            <Badge
-                                                variant="secondary"
-                                                className="rounded-full px-2 py-0 text-[10px] font-medium text-muted-foreground"
-                                            >
-                                                {merchant.status}
-                                            </Badge>
-                                        </TableCell>
-
-                                        <TableCell className="truncate px-2 py-2 text-xs text-muted-foreground">
-                                            {merchant.owner || "—"}
-                                        </TableCell>
-
-                                        <TableCell className="px-3 py-2 text-xs">
-                                            {merchant.lastActivity}
-                                        </TableCell>
-
-                                        <TableCell className="px-3 py-2 text-xs">
-                                            {merchant.shopify ? `• ${merchant.shopify}%` : "—"}
-                                        </TableCell>
-
-                                       <TableCell className="whitespace-nowrap px-3 py-2 text-center text-muted-foreground">
-                                            {merchant.fit != null ? (
-                                                <div className="flex flex-col items-center gap-0.5">
-                                                    <span className="text-xs font-semibold text-neutral-900">
-                                                        {merchant.fit}
-                                                    </span>
-
-                                                    <div className="h-1 w-10 overflow-hidden rounded-full bg-neutral-200">
-                                                        <div
-                                                            className="h-full rounded-full bg-neutral-900"
-                                                            style={{ width: `${merchant.fit}%` }}
-                                                        />
-                                                    </div>
-
-                                                    <span className="text-[9px] text-neutral-400">
-                                                        6 of 6
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                "—"
-                                            )}
-                                        </TableCell>
-
-                                        <TableCell className="px-2 py-2">
-                                            <Badge
-                                                variant="outline"
-                                                className="rounded-sm px-1.5 py-0 text-[9px] font-normal text-muted-foreground"
-                                            >
-                                                {merchant.source}
-                                            </Badge>
-                                        </TableCell>
-
-                                        <TableCell className="whitespace-nowrap px-3 py-2">
-                                           <div className="flex items-center justify-end gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    className="h-6 bg-[#202124] px-2 text-[10px] text-white"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    ▶ Run
-                                                </Button>
-
-                                                <DeleteMerchantDialog
-                                                    merchantName={merchant.store}
-                                                    onDelete={() => handleDeleteMerchant(merchant.id)}
-                                                    onDialogOpenChange={(open) => {
-                                                        if (open) {
-                                                            setOpenDeleteDialogId(merchant.id);
-                                                        } else {
-                                                            setTimeout(() => {
-                                                                setOpenDeleteDialogId(null);
-                                                            }, 100);
-                                                        }
-                                                    }}
-                                                />
+                                                <p className="text-sm text-muted-foreground">
+                                                    No merchants match your current search or filters.
+                                                </p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                                ) : (
+                                    merchantData.map((merchant) => (
+                                        <TableRow
+                                            key={merchant.id}
+                                            className="h-13.5 hover:bg-muted/60 cursor-pointer"
+                                            onClick={() => {
+                                                if (openDeleteDialogId !== null) return;
+
+                                                router.push(`/merchants/${merchant.id}`);
+                                            }}
+                                        >
+                                            <TableCell className="truncate px-3 py-2 text-xs font-semibold">
+                                                {merchant.domain}
+                                            </TableCell>
+
+                                            <TableCell className="truncate px-3 py-2 text-xs">
+                                                {merchant.store_name || "—"}
+                                            </TableCell>
+
+                                            <TableCell className="px-2 py-2 text-center text-xs">
+                                                {merchant.country}
+                                            </TableCell>
+
+                                            <TableCell className="truncate px-3 py-2 text-xs">
+                                                {merchant.industry || "—"}
+                                            </TableCell>
+
+                                            <TableCell className="px-3 py-2">
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="rounded-full px-2 py-0 text-[10px] font-medium text-muted-foreground"
+                                                >
+                                                    {merchant.status}
+                                                </Badge>
+                                            </TableCell>
+
+                                            <TableCell className="truncate px-2 py-2 text-xs text-muted-foreground">
+                                                {merchant.assigned_rep?.display_name || "—"}
+                                            </TableCell>
+
+                                            <TableCell className="px-3 py-2 text-xs">
+                                                {merchant.last_activity_at
+                                                    ? new Date(merchant.last_activity_at).toLocaleString()
+                                                    : "—"}
+                                            </TableCell>
+
+                                            <TableCell className="px-3 py-2 text-xs">
+                                                —
+                                            </TableCell>
+
+                                            <TableCell className="whitespace-nowrap px-3 py-2 text-center text-muted-foreground">
+                                                —
+                                            </TableCell>
+
+                                            <TableCell className="px-2 py-2">
+                                                <Badge
+                                                    variant="outline"
+                                                    className="rounded-sm px-1.5 py-0 text-[9px] font-normal text-muted-foreground"
+                                                >
+                                                    {merchant.source}
+                                                </Badge>
+                                            </TableCell>
+
+                                            <TableCell className="whitespace-nowrap px-3 py-2">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        className="h-6 bg-[#202124] px-2 text-[10px] text-white"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        ▶ Run
+                                                    </Button>
+
+                                                    <DeleteMerchantDialog
+                                                        merchantName={merchant.store_name || merchant.domain}
+                                                        onDelete={() => handleDeleteMerchant(merchant.id)}
+                                                        onDialogOpenChange={(open) => {
+                                                            if (open) {
+                                                                setOpenDeleteDialogId(merchant.id);
+                                                            } else {
+                                                                setTimeout(() => {
+                                                                    setOpenDeleteDialogId(null);
+                                                                }, 100);
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>)}
                 </div>
                 <div className="flex items-center justify-between border-t px-3 py-2">
                     {/* Results count */}
-                    <p className="text-xs text-foreground">
-                        {filteredMerchants.length === 0
+                    <div className="text-xs text-muted-foreground">
+                        {totalMerchants === 0
                             ? "0 results"
-                            : `${startIndex + 1}–${Math.min(
-                                startIndex + itemsPerPage,
-                                filteredMerchants.length
-                            )} 
-                            of ${filteredMerchants.length}`}
-                    </p>
+                            : `${(currentPage - 1) * itemsPerPage + 1}–${Math.min(
+                                currentPage * itemsPerPage,
+                                totalMerchants
+                            )} of ${totalMerchants}`}
+                    </div>
 
                     {/* Pagination controls */}
                     <div className="flex items-center gap-1">

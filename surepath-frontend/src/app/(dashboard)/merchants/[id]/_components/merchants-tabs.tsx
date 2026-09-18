@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import {
     Tabs,
     TabsContent,
@@ -9,26 +7,27 @@ import {
     TabsTrigger,
 } from "@/components/ui/tabs";
 
-import type { Merchant } from "@/types/merchant-types";
-import type { Activity } from "@/types/activity-types";
-import { initialActivities } from "@/data/activities";
+import type { Merchant } from "@/features/merchants/types/merchant.types";
+
 
 import OverviewTab from "./overview-tab";
 import PoliciesTab from "./policies-tab";
 import TasksTab from "./tasks-tab";
 import NotesTab from "./notes-tab";
 import ActivityTab from "./activity-tab";
+import { useState } from "react";
 
 interface MerchantTabsProps {
     merchant: Merchant;
+  onMerchantRefresh: () => Promise<void>;
+
 }
 
 export default function MerchantTabs({
     merchant,
+    onMerchantRefresh,
 }: MerchantTabsProps) {
-    const [activities, setActivities] = useState<Activity[]>(
-        initialActivities
-    );
+    const [activityCount, setActivityCount] = useState(0);
 
     return (
         <Tabs defaultValue="overview" className="w-full gap-5">
@@ -55,7 +54,7 @@ export default function MerchantTabs({
                 <TabsTrigger value="activity" className="min-w-22 flex-1">
                     Activity
                     <span className="ml-1">
-                        {activities.length}
+                        {activityCount}
                     </span>
                 </TabsTrigger>
             </TabsList>
@@ -65,11 +64,11 @@ export default function MerchantTabs({
             </TabsContent>
 
             <TabsContent value="policies">
-                <PoliciesTab />
+                <PoliciesTab merchantId={merchant.id} />
             </TabsContent>
 
             <TabsContent value="tasks">
-                <TasksTab />
+                <TasksTab merchantId={merchant.id} />
             </TabsContent>
 
             <TabsContent value="notes">
@@ -77,10 +76,7 @@ export default function MerchantTabs({
             </TabsContent>
 
             <TabsContent value="activity">
-                <ActivityTab
-                    activities={activities}
-                    setActivities={setActivities}
-                />
+                <ActivityTab merchantId={merchant.id} onActivityCountChange={setActivityCount} onMerchantRefresh={onMerchantRefresh} />
             </TabsContent>
         </Tabs>
     );

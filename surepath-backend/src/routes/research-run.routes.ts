@@ -1,7 +1,6 @@
 import { Router } from "express";
 
 import { researchController } from "../controllers/research.controller";
-import { researchRunController } from "../controllers/research-run.controller";
 
 import { researchRunValidator } from "../validators/research.validator";
 import { validate } from "../middleware/validation.middleware";

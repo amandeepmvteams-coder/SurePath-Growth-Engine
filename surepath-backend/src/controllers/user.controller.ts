@@ -219,3 +219,44 @@ export const resetPassword = async (
     });
   }
 };
+
+export const getCurrentUser = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                message: "Authentication required",
+            });
+        }
+
+        const user = await userService.getUserById(req.user.id);
+
+        if (!user || !user.is_active) {
+            return res.status(401).json({
+                message: "Authentication required",
+            });
+        }
+
+        return res.status(200).json({
+            user: {
+                id: user.id,
+                username: user.username,
+                display_name: user.display_name,
+                email: user.email,
+                role: user.role,
+                is_active: user.is_active,
+                last_login_at: user.last_login_at,
+                created_at: user.created_at,
+                updated_at: user.updated_at,
+            },
+        });
+    } catch (error) {
+        console.error("Get current user error:", error);
+
+        return res.status(500).json({
+            message: "Failed to fetch current user",
+        });
+    }
+};

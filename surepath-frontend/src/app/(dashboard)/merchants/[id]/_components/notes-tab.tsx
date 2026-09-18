@@ -1,23 +1,66 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import {
+    createMerchantNote,
+    getMerchantNotes,
+} from "@/features/notes/api/notes.api";
+
+import type { MerchantNote } from "@/features/notes/types/note.types";
 
 interface NotesTabProps {
-    merchantId: number;
+    merchantId: string;
 }
 
 export default function NotesTab({ merchantId }: NotesTabProps) {
     const [note, setNote] = useState("");
-    const [notes, setNotes] = useState<string[]>([]);
+    const [notes, setNotes] = useState<MerchantNote[]>([]);
+    const [notesLoading, setNotesLoading] = useState(true);
 
-    const handleAddNote = () => {
+    useEffect(() => {
+        const loadNotes = async () => {
+            try {
+                setNotesLoading(true);
+
+                const result = await getMerchantNotes(merchantId);
+
+                setNotes(result);
+            } catch (error) {
+                console.error(
+                    "Failed to load merchant notes:",
+                    error
+                );
+            } finally {
+                setNotesLoading(false);
+            }
+        };
+
+        void loadNotes();
+    }, [merchantId]);
+
+    const handleAddNote = async () => {
         if (!note.trim()) return;
 
-        setNotes((prev) => [...prev, note]);
-        setNote("");
+        try {
+            const createdNote = await createMerchantNote(
+                merchantId,
+                {
+                    body: note.trim(),
+                }
+            );
+
+            setNotes((prev) => [createdNote, ...prev]);
+
+            setNote("");
+        } catch (error) {
+            console.error(
+                "Failed to create merchant note:",
+                error
+            );
+        }
     };
 
     return (
@@ -51,18 +94,29 @@ export default function NotesTab({ merchantId }: NotesTabProps) {
                 </div>
 
                 <div className="mt-3">
-                    {notes.length === 0 ? (
+                    {notesLoading ? (
+                        <p className="text-xs text-muted-foreground">
+                            Loading notes...
+                        </p>
+                    ) : notes.length === 0 ? (
                         <p className="text-xs text-muted-foreground">
                             No notes yet.
                         </p>
                     ) : (
                         <div className="space-y-2">
-                            {notes.map((item, index) => (
+                            {notes.map((item) => (
                                 <div
-                                    key={index}
+                                    key={item.id}
                                     className="border-b pb-2 text-xs"
                                 >
-                                    {item}
+                                    <p>{item.body}</p>
+
+                                    <div className="mt-1 text-muted-foreground">
+                                        {item.author ?? "Unknown"} ·{" "}
+                                        {new Date(
+                                            item.created_at
+                                        ).toLocaleString()}
+                                    </div>
                                 </div>
                             ))}
                         </div>

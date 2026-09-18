@@ -12,7 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CURRENT_USER } from "@/data/current-user";
 import UpdatePasswordDialog from "../auth/update-password-dialog";
 import { Menu } from "lucide-react";
 import {
@@ -23,16 +22,31 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { NAV_GROUPS, isNavItemActive, findActiveGroup } from "@/lib/navigation";
+import { useAuth } from "@/features/auth/context/auth.context";
+import { toast } from "sonner";
 
 export function Topbar() {
+  
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  const { user, isLoading, logout } = useAuth();
+
   const activeGroup = findActiveGroup(pathname);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
-  const handleSignOut = () => {
-    localStorage.clear();
-    router.push("/login");
+  const handleSignOut = async () => {
+    try {
+      await logout();
+
+      toast.success("Signed out successfully");
+
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+
+      toast.error("Failed to sign out");
+    }
   };
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-white px-4 md:px-6">
@@ -129,16 +143,18 @@ export function Topbar() {
             className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors cursor-pointer hover:bg-neutral-100"
           >
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-xs font-semibold text-white">
-              {CURRENT_USER.initial}
+              {isLoading
+                ? "..."
+                : user?.display_name?.charAt(0).toUpperCase()}
             </span>
 
             <span className="min-w-0">
               <span className="block text-sm font-semibold leading-tight text-neutral-900">
-                {CURRENT_USER.username}
+                {isLoading ? "Loading..." : user?.username}
               </span>
 
               <span className="block text-xs leading-tight text-neutral-500">
-                {CURRENT_USER.context}
+                {user?.role}
               </span>
             </span>
 
@@ -156,11 +172,11 @@ export function Topbar() {
           {/* User info */}
           <DropdownMenuLabel className="px-4 py-2.5 font-normal">
             <p className="text-sm font-semibold">
-              {CURRENT_USER.username}
+              {user?.username}
             </p>
 
             <p className="mt-1 text-xs font-normal text-muted-foreground">
-              {CURRENT_USER.context}
+              {user?.role}
             </p>
           </DropdownMenuLabel>
 

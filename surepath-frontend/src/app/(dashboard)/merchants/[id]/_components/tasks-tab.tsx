@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-
+import { useEffect, useState } from "react";
+import { createMerchantTask, getMerchantTasks } from "@/features/tasks/api/tasks.api";
+import type { MerchantTask } from "@/features/tasks/types/task.types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,40 +14,74 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
-interface Task {
-    id: string;
-    title: string;
-    details: string;
-    assignee: string;
-    dueDate: string;
+
+
+interface TasksTabProps {
+    merchantId: string;
 }
 
-export default function TasksTab() {
-    const [tasks, setTasks] = useState<Task[]>([]);
+export default function TasksTab({
+    merchantId,
+}: TasksTabProps) {
+
+    const [tasks, setTasks] = useState<MerchantTask[]>([]);
+    const [tasksLoading, setTasksLoading] = useState(true);
 
     const [title, setTitle] = useState("");
     const [details, setDetails] = useState("");
     const [assignee, setAssignee] = useState("Nobody yet");
     const [dueDate, setDueDate] = useState("");
+    useEffect(() => {
+        const loadTasks = async () => {
+            try {
+                setTasksLoading(true);
 
-    const handleAddTask = () => {
-        if (!title.trim()) return;
+                const result = await getMerchantTasks(
+                    merchantId
+                );
 
-        const newTask: Task = {
-            id: crypto.randomUUID(),
-            title,
-            details,
-            assignee,
-            dueDate,
+                setTasks(result);
+            } catch (error) {
+                console.error(
+                    "Failed to load merchant tasks:",
+                    error
+                );
+            } finally {
+                setTasksLoading(false);
+            }
         };
 
-        setTasks((prev) => [...prev, newTask]);
+        void loadTasks();
+    }, [merchantId]);
 
-        // Reset form
-        setTitle("");
-        setDetails("");
-        setAssignee("Nobody yet");
-        setDueDate("");
+    const handleAddTask = async () => {
+        if (!title.trim()) return;
+
+        try {
+            const task = await createMerchantTask(merchantId, {
+                title: title.trim(),
+                notes: details.trim() || undefined,
+                assigned_to_id:
+                    assignee !== "Nobody yet"
+                        ? assignee
+                        : undefined,
+                due_at: dueDate
+                    ? new Date(`${dueDate}T00:00:00`).toISOString()
+                    : undefined,
+            });
+
+            setTasks((prev) => [...prev, task]);
+
+            setTitle("");
+            setDetails("");
+            setAssignee("Nobody yet");
+            setDueDate("");
+        } catch (error) {
+            console.error(
+                "Failed to create merchant task:",
+                error
+            );
+        }
     };
 
     const handleCancel = () => {
@@ -71,7 +106,11 @@ export default function TasksTab() {
 
             <CardContent className="space-y-3 p-4">
                 {/* Task list / Empty state */}
-                {tasks.length === 0 ? (
+                {tasksLoading ? (
+                    <p className="text-sm text-muted-foreground">
+                        Loading tasks...
+                    </p>
+                ) : tasks.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                         No open tasks.
                     </p>
@@ -82,22 +121,28 @@ export default function TasksTab() {
                                 key={task.id}
                                 className="rounded-md border px-3 py-2"
                             >
-                                <p className="break-words text-sm font-medium">
+                                <p className="wrap-break-word text-sm font-medium">
                                     {task.title}
                                 </p>
 
-                                {task.details && (
-                                    <p className="mt-1 break-words text-xs text-muted-foreground">
-                                        {task.details}
+                                {task.notes && (
+                                    <p className="mt-1 wrap-break-word text-xs text-muted-foreground">
+                                        {task.notes}
                                     </p>
                                 )}
 
                                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                    <span>{task.assignee}</span>
+                                    <span>
+                                        {task.assigned_to?.display_name ??
+                                            "Nobody yet"}
+                                    </span>
 
-                                    {task.dueDate && (
+                                    {task.due_at && (
                                         <span>
-                                            Due: {task.dueDate}
+                                            Due:{" "}
+                                            {new Date(
+                                                task.due_at
+                                            ).toLocaleDateString()}
                                         </span>
                                     )}
                                 </div>
@@ -135,18 +180,6 @@ export default function TasksTab() {
                             <SelectContent>
                                 <SelectItem value="Nobody yet">
                                     Nobody yet
-                                </SelectItem>
-
-                                <SelectItem value="Admin">
-                                    Admin
-                                </SelectItem>
-
-                                <SelectItem value="John Doe">
-                                    John Doe
-                                </SelectItem>
-
-                                <SelectItem value="Jane Smith">
-                                    Jane Smith
                                 </SelectItem>
                             </SelectContent>
                         </Select>

@@ -80,15 +80,18 @@ class MerchantActivityService {
       activityData
     );
 
-    if (activityType === "Outreach") {
+    if (["Call", "Email", "Meeting", "Outreach"].includes(activityType)) {
       await pool.query(
         `
-        UPDATE merchants
-        SET
-          last_activity_at = $1,
-          updated_at = NOW()
-        WHERE id = $2
-        `,
+    UPDATE merchants
+    SET last_activity_at = CASE
+      WHEN last_activity_at IS NULL THEN $1
+      WHEN last_activity_at < $1 THEN $1
+      ELSE last_activity_at
+    END,
+    updated_at = NOW()
+    WHERE id = $2
+    `,
         [occurredAt, merchantId]
       );
     }

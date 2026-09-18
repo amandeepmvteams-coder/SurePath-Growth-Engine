@@ -1,8 +1,8 @@
-import { notFound } from "next/navigation";
+"use client"
 import Link from "next/link";
 import { Play } from "lucide-react";
-
-import { merchants } from "@/data/merchants";
+import { getMerchantById, updateMerchant, } from "@/features/merchants/api/merchants.api";
+import type { Merchant } from "@/features/merchants/types/merchant.types";
 import PageHeader from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { merchantStatuses } from "@/data/filter-options";
@@ -14,31 +14,155 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { merchantOwners } from "@/data/filter-options";
 import { Label } from "@/components/ui/label";
 import MerchantTabs from "./_components/merchants-tabs";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { getActiveUsers } from "@/features/users/api/users.api";
+import type { User } from "@/features/users/types/user.types";
 
 
+export default function MerchantPage() {
+    const params = useParams();
+    const id = params.id as string;
 
-interface MerchantPageProps {
-    params: Promise<{
-        id: string;
-    }>;
-}
+    const [merchant, setMerchant] = useState<Merchant | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [updatingStatus, setUpdatingStatus] = useState(false);
+    const [users, setUsers] = useState<User[]>([]);
+    const [usersLoading, setUsersLoading] = useState(true);
+    const [updatingAssignee, setUpdatingAssignee] = useState(false);
+    const [updatingFollowUp, setUpdatingFollowUp] = useState(false);
 
-export default async function MerchantPage({
-    params,
-}: MerchantPageProps) {
-    const { id } = await params;
+    useEffect(() => {
+        const loadUsers = async () => {
+            try {
+                setUsersLoading(true);
 
-    const merchant = merchants.find(
-        (merchant) => merchant.id === Number(id)
-    );
+                const result = await getActiveUsers();
 
-    if (!merchant) {
-        notFound();
+                setUsers(result);
+            } catch (error) {
+                console.error("Failed to load active users:", error);
+            } finally {
+                setUsersLoading(false);
+            }
+        };
+
+        void loadUsers();
+    }, []);
+
+    const handleAssigneeChange = async (userId: string) => {
+        if (!merchant || updatingAssignee) {
+            return;
+        }
+
+        try {
+            setUpdatingAssignee(true);
+
+            const updatedMerchant = await updateMerchant(merchant.id, {
+                assigned_rep_id: userId === "unassigned" ? null : userId,
+            });
+
+            setMerchant(updatedMerchant);
+        } catch (error) {
+            console.error("Failed to update merchant assignee:", error);
+        } finally {
+            setUpdatingAssignee(false);
+        }
+    };
+
+    const handleFollowUpChange = async (value: string) => {
+        if (!merchant || updatingFollowUp) {
+            return;
+        }
+
+        try {
+            setUpdatingFollowUp(true);
+
+            const updatedMerchant = await updateMerchant(merchant.id, {
+                next_follow_up_at: value
+                    ? new Date(`${value}T00:00:00`).toISOString()
+                    : null,
+            });
+
+            setMerchant(updatedMerchant);
+        } catch (error) {
+            console.error(
+                "Failed to update merchant follow-up:",
+                error
+            );
+        } finally {
+            setUpdatingFollowUp(false);
+        }
+    };
+
+    const handleStatusChange = async (status: string) => {
+        if (!merchant || status === merchant.status || updatingStatus) {
+            return;
+        }
+
+        try {
+            setUpdatingStatus(true);
+
+            const updatedMerchant = await updateMerchant(merchant.id, {
+                status,
+            });
+
+            setMerchant(updatedMerchant);
+        } catch (error) {
+            console.error("Failed to update merchant status:", error);
+        } finally {
+            setUpdatingStatus(false);
+        }
+    };
+    useEffect(() => {
+        const loadMerchant = async () => {
+            try {
+                setIsLoading(true);
+                setError(null);
+
+                const result = await getMerchantById(id);
+
+                setMerchant(result);
+            } catch (error) {
+                console.error("Failed to load merchant:", error);
+                setError("Failed to load merchant");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        void loadMerchant();
+    }, [id]);
+
+    if (isLoading) {
+        return (
+            <div className="flex h-40 items-center justify-center">
+                Loading merchant...
+            </div>
+        );
     }
 
+    if (error || !merchant) {
+        return (
+            <div className="flex h-40 items-center justify-center">
+                {error ?? "Merchant not found"}
+            </div>
+        );
+    }
+
+    const refreshMerchant = async () => {
+        if (!id) return;
+
+        try {
+            const updatedMerchant = await getMerchantById(id);
+            setMerchant(updatedMerchant);
+        } catch (error) {
+            console.error("Failed to refresh merchant:", error);
+        }
+    };
     return (
         <div className="space-y-4">
             {/* Breadcrumb */}
@@ -51,7 +175,7 @@ export default async function MerchantPage({
 
             {/* Header */}
             <PageHeader
-                title={merchant.store}
+                title={merchant.store_name || merchant.domain}
                 size="sm"
                 subtitle={
                     <a
@@ -85,9 +209,15 @@ export default async function MerchantPage({
                             return (
                                 <button
                                     key={status}
+                                    type="button"
+                                    disabled={updatingStatus}
+                                    onClick={() => void handleStatusChange(status)}
                                     className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${isActive
                                         ? "border-primary bg-primary text-primary-foreground"
                                         : "border-border bg-background text-muted-foreground hover:bg-muted"
+                                        } ${updatingStatus
+                                            ? "cursor-not-allowed opacity-60"
+                                            : ""
                                         }`}
                                 >
                                     {status}
@@ -112,18 +242,32 @@ export default async function MerchantPage({
                                 Assigned to
                             </Label>
 
-                            <Select defaultValue={merchant.owner ?? "Unassigned"}>
+                            <Select
+                                value={merchant.assigned_rep_id ?? "unassigned"}
+                                onValueChange={(value) => void handleAssigneeChange(value)}
+                                disabled={usersLoading || updatingAssignee}
+                            >
                                 <SelectTrigger className="h-9 w-full sm:w-40">
-                                    <SelectValue placeholder="Select owner" />
+                                    <SelectValue
+                                        placeholder={
+                                            usersLoading
+                                                ? "Loading..."
+                                                : "Select owner"
+                                        }
+                                    />
                                 </SelectTrigger>
 
                                 <SelectContent>
-                                    {merchantOwners.map((owner) => (
+                                    <SelectItem value="unassigned">
+                                        Unassigned
+                                    </SelectItem>
+
+                                    {users.map((user) => (
                                         <SelectItem
-                                            key={owner}
-                                            value={owner}
+                                            key={user.id}
+                                            value={user.id}
                                         >
-                                            {owner}
+                                            {user.display_name || user.username}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -142,7 +286,16 @@ export default async function MerchantPage({
                             <input
                                 id="follow-up"
                                 type="date"
-                                className="h-9 max-w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                                value={
+                                    merchant.next_follow_up_at
+                                        ? merchant.next_follow_up_at.slice(0, 10)
+                                        : ""
+                                }
+                                disabled={updatingFollowUp}
+                                onChange={(event) =>
+                                    void handleFollowUpChange(event.target.value)
+                                }
+                                className="h-9 max-w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
                             />
                         </div>
                     </div>
@@ -154,7 +307,9 @@ export default async function MerchantPage({
                         </p>
 
                         <p className=" text-xs text-muted-foreground/70 ">
-                            {merchant.lastActivity}
+                            {merchant.last_activity_at
+                                ? new Date(merchant.last_activity_at).toLocaleString()
+                                : "—"}
                         </p>
                     </div>
                 </CardContent>
@@ -170,7 +325,7 @@ export default async function MerchantPage({
                         </p>
 
                         <p className="mt-1.5 text-sm text-muted-foreground">
-                            {merchant.fit ?? "—"}
+                            —
                         </p>
                     </div>
 
@@ -210,7 +365,10 @@ export default async function MerchantPage({
                 </CardContent>
             </Card>
 
-            <MerchantTabs merchant={merchant} />
+            <MerchantTabs
+                merchant={merchant}
+                onMerchantRefresh={refreshMerchant}
+            />
         </div>
     );
 }

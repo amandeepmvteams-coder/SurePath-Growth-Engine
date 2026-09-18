@@ -1,4 +1,4 @@
-import { researchPageRepository } from "../repositories/research-page.repository";
+import { researchPageRepository } from "../repositories/research-run.repository";
 import { merchantProfileRepository } from "../repositories/merchant-profile.repository";
 import { merchantContactRepository } from "../repositories/merchant-contact.repository";
 

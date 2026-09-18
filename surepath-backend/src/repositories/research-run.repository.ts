@@ -1,159 +1,127 @@
 import { pool } from "../config/database";
 import {
-    ResearchRun,
-    ResearchRunStatus,
-} from "../types/research-run.types";
+  ResearchPage,
+  CreateResearchPageData,
+} from "../types/research.types";
 
-class ResearchRunRepository {
-    async create(merchantId: string): Promise<ResearchRun> {
-        const result = await pool.query(
-            `
-      INSERT INTO research_runs (
+class ResearchPageRepository {
+  async create(
+    data: CreateResearchPageData
+  ): Promise<ResearchPage> {
+    const result = await pool.query(
+      `
+      INSERT INTO research_pages (
+        research_run_id,
         merchant_id,
-        status
+        url,
+        page_type,
+        status,
+        status_code,
+        content_type,
+        title,
+        content,
+        error
       )
-      VALUES ($1, 'running')
+      VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10
+      )
       RETURNING
         id,
+        research_run_id,
         merchant_id,
+        url,
+        page_type,
         status,
+        status_code,
+        content_type,
+        title,
+        content,
+        fetched_at,
         error,
-        started_at,
-        finished_at,
         created_at
       `,
-            [merchantId]
-        );
+      [
+        data.research_run_id,
+        data.merchant_id,
+        data.url,
+        data.page_type ?? null,
+        data.status,
+        data.status_code ?? null,
+        data.content_type ?? null,
+        data.title ?? null,
+        data.content ?? null,
+        data.error ?? null,
+      ]
+    );
 
-        return result.rows[0];
-    }
+    return result.rows[0];
+  }
 
-    async markCompleted(
-        id: string
-    ): Promise<ResearchRun> {
-        const result = await pool.query(
-            `
-      UPDATE research_runs
-      SET
-        status = 'completed',
-        finished_at = NOW(),
-        error = NULL
-      WHERE id = $1
-      RETURNING
-        id,
-        merchant_id,
-        status,
-        error,
-        started_at,
-        finished_at,
-        created_at
-      `,
-            [id]
-        );
-
-        return result.rows[0];
-    }
-
-    async markFailed(
-        id: string,
-        error: string
-    ): Promise<ResearchRun> {
-        const result = await pool.query(
-            `
-      UPDATE research_runs
-      SET
-        status = 'failed',
-        finished_at = NOW(),
-        error = $2
-      WHERE id = $1
-      RETURNING
-        id,
-        merchant_id,
-        status,
-        error,
-        started_at,
-        finished_at,
-        created_at
-      `,
-            [id, error]
-        );
-
-        return result.rows[0];
-    }
-
-    async findByMerchantId(
-        merchantId: string
-    ): Promise<ResearchRun[]> {
-        const result = await pool.query(
-            `
+  async findByRunId(
+    runId: string
+  ): Promise<ResearchPage[]> {
+    const result = await pool.query(
+      `
       SELECT
         id,
+        research_run_id,
         merchant_id,
+        url,
+        page_type,
         status,
+        status_code,
+        content_type,
+        title,
+        content,
+        fetched_at,
         error,
-        started_at,
-        finished_at,
         created_at
-      FROM research_runs
-      WHERE merchant_id = $1
-      ORDER BY created_at DESC
+      FROM research_pages
+      WHERE research_run_id = $1
+      ORDER BY created_at ASC
       `,
-            [merchantId]
-        );
+      [runId]
+    );
 
-        return result.rows;
-    }
+    return result.rows;
+  }
 
-    async findLeastRecentlyResearched(
-        limit: number
-    ) {
-        const result = await pool.query(
-            `
-      SELECT m.*
-      FROM merchants m
-      LEFT JOIN LATERAL (
-        SELECT
-          rr.finished_at
-        FROM research_runs rr
-        WHERE rr.merchant_id = m.id
-        ORDER BY rr.created_at DESC
-        LIMIT 1
-      ) latest ON TRUE
-      ORDER BY
-        latest.finished_at ASC NULLS FIRST,
-        m.created_at ASC
-      LIMIT $1
-      `,
-            [limit]
-        );
-
-        return result.rows;
-    }
-
-    async findRunningByMerchantId(
-        merchantId: string
-    ): Promise<ResearchRun | null> {
-        const result = await pool.query<ResearchRun>(
-            `
-        SELECT
-            id,
-            merchant_id,
-            status,
-            error,
-            started_at,
-            finished_at,
-            created_at
-        FROM research_runs
-        WHERE merchant_id = $1
-          AND status = 'running'
-        LIMIT 1
+  async findLatestCompletedByMerchantId(
+    merchantId: string
+) {
+    const result = await pool.query(
+        `
+        SELECT rp.*
+        FROM research_pages rp
+        INNER JOIN research_runs rr
+            ON rr.id = rp.research_run_id
+        WHERE rp.merchant_id = $1
+          AND rr.status = 'completed'
+        AND rr.id = (
+            SELECT id
+            FROM research_runs
+            WHERE merchant_id = $1
+              AND status = 'completed'
+            ORDER BY created_at DESC
+            LIMIT 1
+        )
+        ORDER BY rp.created_at ASC
         `,
-            [merchantId]
-        );
+        [merchantId]
+    );
 
-        return result.rows[0] ?? null;
-    }
+    return result.rows;
+}
 }
 
-export const researchRunRepository =
-    new ResearchRunRepository();
+export const researchPageRepository =
+  new ResearchPageRepository();

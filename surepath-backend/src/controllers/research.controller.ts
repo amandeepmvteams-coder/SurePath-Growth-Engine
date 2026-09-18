@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { researchRunService } from "../services/research-run.service";
+import { researchRunService } from "../services/research.service";
 
 class ResearchController {
   async run(

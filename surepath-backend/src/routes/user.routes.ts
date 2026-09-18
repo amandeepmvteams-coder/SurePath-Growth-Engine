@@ -6,6 +6,7 @@ import {
     getUserById,
     updateUser,
     resetPassword,
+    getCurrentUser,
 } from "../controllers/user.controller";
 
 import {
@@ -48,6 +49,12 @@ router.post(
     validate,
     resetPassword
 );
+router.get(
+    "/me",
+    requireApiKey,
+    requireSession,
+    getCurrentUser
+);
 
 router.get(
     "/:id",
@@ -65,5 +72,6 @@ router.patch(
     validate,
     updateUser
 );
+
 
 export default router;

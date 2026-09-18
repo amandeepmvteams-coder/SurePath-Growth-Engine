@@ -8,7 +8,7 @@ import merchantStatusHistoryRoutes from "./routes/merchant-status-history.routes
 import taskRoutes from "./routes/task.routes";
 import scoringConfigRoutes from "./routes/scoring-config.routes";
 import scoringRoutes from "./routes/scoring.routes";
-import researchRoutes from "./routes/research.routes";
+import researchRoutes from "./routes/research-run.routes";
 import profileRunRoutes from "./routes/profile-run.routes";
 import detectionRunRoutes from "./routes/detection-run.routes";
 import discoveryRoutes from "./routes/discovery.routes";
@@ -17,7 +17,12 @@ import aiConfigRoutes from "./routes/ai.routes";
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 

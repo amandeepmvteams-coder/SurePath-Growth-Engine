@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,21 +19,28 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import type { Activity } from "@/types/activity-types";
+import {
+    createMerchantActivity,
+    getMerchantActivities,
+} from "@/features/activities/api/activities.api";
+
+import type { MerchantActivity } from "@/features/activities/types/activity.types";
+import { toast } from "sonner";
+import axios from "axios";
 
 // Activity Tabs Types Interface
 interface ActivityTabProps {
-    activities: Activity[];
-    setActivities: React.Dispatch<
-        React.SetStateAction<Activity[]>
-    >;
+    merchantId: string;
+    onActivityCountChange: (count: number) => void;
+    onMerchantRefresh: () => Promise<void>;
 }
-
 export default function ActivityTab({
-    activities,
-    setActivities,
+    merchantId,
+    onActivityCountChange,
+    onMerchantRefresh,
 }: ActivityTabProps) {
-
+    const [activities, setActivities] = useState<MerchantActivity[]>([]);
+    const [activitiesLoading, setActivitiesLoading] = useState(true);
     // Activity Tabs States 
     const [isLoggingOutreach, setIsLoggingOutreach] = useState(false);
     const [outreachType, setOutreachType] = useState("Call");
@@ -42,6 +49,30 @@ export default function ActivityTab({
     const [when, setWhen] = useState("");
     const [summary, setSummary] = useState("");
     const [notes, setNotes] = useState("");
+
+    useEffect(() => {
+        const loadActivities = async () => {
+            try {
+                setActivitiesLoading(true);
+
+                const result = await getMerchantActivities(
+                    merchantId
+                );
+
+                setActivities(result);
+                onActivityCountChange(result.length);
+            } catch (error) {
+                console.error(
+                    "Failed to load merchant activities:",
+                    error
+                );
+            } finally {
+                setActivitiesLoading(false);
+            }
+        };
+
+        void loadActivities();
+    }, [merchantId, onActivityCountChange]);
 
     // Reset Form Function 
     const resetOutreachForm = () => {
@@ -61,23 +92,50 @@ export default function ActivityTab({
 
 
     // Handle LogOut Reach Submit Function 
-    const handleLogOutreach = () => {
-        if (!summary.trim()) return;
+    const handleLogOutreach = async () => {
+        if (!summary.trim() && !notes.trim()) {
+            toast.error("Please add a summary or notes.");
+            return;
+        }
 
-        const activity: Activity = {
-            id: Date.now(),
-            type: "outreach",
-            title: `${outreachType} - ${direction}`,
-            timestamp: new Date().toLocaleString(),
-        };
+        if (!when) {
+            toast.error("Please select when the activity occurred.");
+            return;
+        }
 
-        setActivities((prevActivities) => [
-            activity,
-            ...prevActivities,
-        ]);
+        try {
+            const activity = await createMerchantActivity(
+                merchantId,
+                {
+                    activity_type: outreachType,
+                    direction,
+                    channel: channel.trim() || undefined,
+                    subject: summary.trim() || undefined,
+                    body: notes.trim() || undefined,
+                    occurred_at: new Date(when).toISOString(),
+                }
+            );
 
-        resetOutreachForm();
-        setIsLoggingOutreach(false);
+            setActivities((prev) => [activity, ...prev]);
+
+            onActivityCountChange(activities.length + 1);
+            await onMerchantRefresh();
+            toast.success("Activity logged successfully.");
+
+            resetOutreachForm();
+            setIsLoggingOutreach(false);
+        } catch (error) {
+            console.error("Failed to log activity:", error);
+
+            if (axios.isAxiosError(error)) {
+                toast.error(
+                    error.response?.data?.message ||
+                    "Failed to log activity."
+                );
+            } else {
+                toast.error("Failed to log activity.");
+            }
+        }
     };
 
     return (
@@ -119,8 +177,8 @@ export default function ActivityTab({
                                         <SelectContent>
                                             <SelectItem value="Call">Call</SelectItem>
                                             <SelectItem value="Email">Email</SelectItem>
-                                            <SelectItem value="LinkedIn">LinkedIn</SelectItem>
                                             <SelectItem value="Meeting">Meeting</SelectItem>
+                                            <SelectItem value="Outreach">Outreach</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -238,25 +296,53 @@ export default function ActivityTab({
 
                 <CardContent className="p-4">
                     <div className="space-y-3">
-                        {activities.map((activity) => (
-                            <div
-                                key={activity.id}
-                                className="flex gap-3"
-                            >
-                                {/* Small dot */}
-                                <div className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
+                        {activitiesLoading ? (
+                            <p className="text-sm text-muted-foreground">
+                                Loading activities...
+                            </p>
+                        ) : activities.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                No activities yet.
+                            </p>
+                        ) : (
+                            <div className="space-y-3">
+                                {activities.map((activity) => (
+                                    <div
+                                        key={activity.id}
+                                        className="flex gap-3"
+                                    >
+                                        <div className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
 
-                                <div>
-                                    <p className="text-sm font-medium">
-                                        {activity.title}
-                                    </p>
+                                        <div>
+                                            <p className="text-sm font-medium">
+                                                {activity.subject ??
+                                                    activity.activity_type}
+                                            </p>
 
-                                    <p className="mt-0.5 text-xs text-muted-foreground">
-                                        {activity.timestamp}
-                                    </p>
-                                </div>
+                                            {activity.body && (
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    {activity.body}
+                                                </p>
+                                            )}
+
+                                            <p className="mt-0.5 text-xs text-muted-foreground">
+                                                {activity.activity_type}
+                                                {activity.direction
+                                                    ? ` · ${activity.direction}`
+                                                    : ""}
+                                                {activity.channel
+                                                    ? ` · ${activity.channel}`
+                                                    : ""}
+                                                {" · "}
+                                                {new Date(
+                                                    activity.occurred_at
+                                                ).toLocaleString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
+                        )}
                     </div>
                 </CardContent>
             </Card>
