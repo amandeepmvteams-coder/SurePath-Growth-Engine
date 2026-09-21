@@ -23,20 +23,30 @@ export const login = async (
     res: Response
 ) => {
     try {
-        const { username, password } = req.body;
+        const {
+            username,
+            password,
+            keepSignedIn,
+        } = req.body;
 
         const result = await authService.login(
             username,
-            password
+            password,
+            keepSignedIn
         );
 
         const signedSession = signSessionToken(
             result.sessionToken
         );
 
+        // 1 day by default, 30 days when "Keep me signed in" is checked
+        const maxAge = keepSignedIn
+            ? 60 * 60 * 24 * 30
+            : 60 * 60 * 24;
+
         res.setHeader(
             "Set-Cookie",
-            `surepath_session=${signedSession}; HttpOnly; Path=/; Max-Age=86400; SameSite=None; Secure`
+            `surepath_session=${signedSession}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=None; Secure`
         );
 
         return res.status(200).json({

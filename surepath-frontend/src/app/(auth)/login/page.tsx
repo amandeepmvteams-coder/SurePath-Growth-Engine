@@ -33,10 +33,11 @@ export default function Page() {
             const result = await login({
                 username,
                 password,
+                keepSignedIn,
             });
 
             // console.log("Logged in user:", result.user);
-            
+
             toast.success("Login successful!");
 
             router.push("/dashboard");

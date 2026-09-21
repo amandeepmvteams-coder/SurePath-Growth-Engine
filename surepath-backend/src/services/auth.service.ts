@@ -5,7 +5,7 @@ import { userRepository } from "../repositories/user.repository";
 import { authRepository } from "../repositories/auth.repository";
 
 export const authService = {
-    async login(username: string, password: string) {
+    async login(username: string, password: string, keepSignedIn: boolean) {
         const userCount = await userRepository.countUsers();
 
         if (userCount === 0) {
@@ -43,8 +43,12 @@ export const authService = {
             .update(sessionToken)
             .digest("hex");
 
+        const sessionDuration = keepSignedIn
+            ? 1000 * 60 * 60 * 24 * 30
+            : 1000 * 60 * 60 * 24;
+
         const expiresAt = new Date(
-            Date.now() + 1000 * 60 * 60 * 24
+            Date.now() + sessionDuration
         );
 
         await authRepository.createSession(
