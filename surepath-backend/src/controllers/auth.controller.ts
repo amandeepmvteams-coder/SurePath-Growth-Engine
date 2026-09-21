@@ -36,7 +36,7 @@ export const login = async (
 
         res.setHeader(
             "Set-Cookie",
-            `surepath_session=${signedSession}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax`
+            `surepath_session=${signedSession}; HttpOnly; Path=/; Max-Age=86400; SameSite=None; Secure`
         );
 
         return res.status(200).json({
