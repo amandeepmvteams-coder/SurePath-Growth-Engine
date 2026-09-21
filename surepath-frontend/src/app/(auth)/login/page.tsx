@@ -2,7 +2,7 @@
 
 import { useState, type SubmitEventHandler } from "react";
 import { useRouter } from "next/navigation";
-import { TrendingUp, User, LockKeyhole } from "lucide-react";
+import { TrendingUp, User, LockKeyhole, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login } from "@/features/auth/api/auth.api";
+
 export default function Page() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [keepSignedIn, setKeepSignedIn] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const router = useRouter();
     const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (
         event
@@ -129,14 +131,28 @@ export default function Page() {
 
                                     <Input
                                         id="password"
-                                        type="password"
+                                        type={showPassword ? "text" : "password"}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="••••••••"
                                         disabled={isLoading}
-                                        className="h-11 rounded-xl border-[#cfd2d6] bg-[#f7f7f7] pl-10 shadow-sm text-foreground
-                                                 placeholder:text-[#8b95a1] focus-visible:ring-1"
+                                        className="h-11 rounded-xl border-[#cfd2d6] bg-[#f7f7f7] pl-10 pr-10 shadow-sm text-foreground
+                                        placeholder:text-[#8b95a1] focus-visible:ring-1"
                                     />
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword((prev) => !prev)}
+                                        disabled={isLoading}
+                                        aria-label={showPassword ? "Hide password" : "Show password"}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8b95a1] transition-colors cursor-pointer hover:text-[#3f4854] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff className="size-4" strokeWidth={1.8} />
+                                        ) : (
+                                            <Eye className="size-4" strokeWidth={1.8} />
+                                        )}
+                                    </button>
                                 </div>
                             </div>
 
