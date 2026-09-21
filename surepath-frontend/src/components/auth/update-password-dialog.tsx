@@ -15,6 +15,7 @@ import {
 import { changePassword } from "@/features/settings/api/settings.api";
 import { useAuth } from "@/features/auth/context/auth.context";
 import { toast } from "sonner";
+import { AxiosError } from "axios";
 interface UpdatePasswordDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -28,36 +29,55 @@ export default function UpdatePasswordDialog({
     const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
-
+    const [error, setError] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
 
     const resetInputFields = () => {
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
-    }
+        setError(null);
+    };
+    const showError = (message: string) => {
+        setError(message);
 
+        setTimeout(() => {
+            setError(null);
+        }, 2000);
+    };
     const handleSubmit = async () => {
+        setError(null);
+
         if (!user?.username) {
+            showError("Unable to identify the signed-in user.");
             return;
         }
 
         if (!currentPassword || !newPassword || !confirmPassword) {
+            showError("Please fill in all password fields.");
             return;
         }
 
         if (newPassword.length < 10) {
+            showError("New password must be at least 10 characters.");
             return;
         }
 
         if (newPassword === currentPassword) {
+            showError(
+                "New password must be different from the current password."
+            );
             return;
         }
 
         if (newPassword !== confirmPassword) {
+            showError("New passwords do not match.");
             return;
         }
 
         try {
+            setSaving(true);
+
             await changePassword({
                 username: user.username,
                 current_password: currentPassword,
@@ -66,14 +86,24 @@ export default function UpdatePasswordDialog({
 
             resetInputFields();
             onOpenChange(false);
-            toast.success("Password Changed Successfully")
         } catch (error) {
             console.error(
                 "Failed to update password:",
                 error
             );
-            // toast.error(error)
 
+            if (
+                error instanceof AxiosError &&
+                error.response?.status === 401
+            ) {
+                showError("Current password is incorrect.");
+            } else {
+                showError(
+                    "Failed to update password. Please try again."
+                );
+            }
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -154,7 +184,11 @@ export default function UpdatePasswordDialog({
                         workspace.
                     </p>
                 </div>
-
+                {error && (
+                    <p className="px-5 pb-2 text-xs text-destructive">
+                        *{error}
+                    </p>
+                )}
                 <div className="flex justify-end gap-3 border-t px-5 py-4">
                     <Button
                         variant="ghost"
@@ -164,10 +198,12 @@ export default function UpdatePasswordDialog({
                         Cancel
                     </Button>
 
-                    <Button onClick={handleSubmit}
+                    <Button
+                        onClick={handleSubmit}
                         className="h-9"
+                        disabled={saving}
                     >
-                        Update password
+                        {saving ? "Updating..." : "Update password"}
                     </Button>
                 </div>
             </DialogContent>
