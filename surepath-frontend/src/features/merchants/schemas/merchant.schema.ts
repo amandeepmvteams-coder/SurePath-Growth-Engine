@@ -3,8 +3,8 @@ import { z } from "zod";
 export const assignedRepSchema = z.object({
     id: z.string(),
     username: z.string(),
-    display_name: z.string(),
-    email: z.string(),
+    display_name: z.string().nullable(),
+    email: z.string().nullable(),
 });
 
 export const merchantSchema = z.object({

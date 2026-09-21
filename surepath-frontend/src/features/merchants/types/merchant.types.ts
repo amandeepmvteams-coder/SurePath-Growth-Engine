@@ -1,8 +1,8 @@
 export interface AssignedRep {
     id: string;
     username: string;
-    display_name: string;
-    email: string;
+    display_name: string | null;
+    email: string | null;
 }
 
 export interface Merchant {
@@ -40,7 +40,7 @@ export interface MerchantSort {
 
 export interface GetMerchantsParams
     extends MerchantFilters,
-        MerchantSort {
+    MerchantSort {
     limit?: number;
     offset?: number;
 }

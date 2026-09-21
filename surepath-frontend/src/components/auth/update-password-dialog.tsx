@@ -35,11 +35,7 @@ export default function UpdatePasswordDialog({
     const handleSubmit = () => {
         // Password update logic will come here
 
-        console.log({
-            currentPassword,
-            newPassword,
-            confirmPassword,
-        });
+
         resetInputFields()
     };
 

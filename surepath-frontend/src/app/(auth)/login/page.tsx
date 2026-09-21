@@ -38,7 +38,6 @@ export default function Page() {
                 keepSignedIn,
             });
 
-            // console.log("Logged in user:", result.user);
 
             toast.success("Login successful!");
 
