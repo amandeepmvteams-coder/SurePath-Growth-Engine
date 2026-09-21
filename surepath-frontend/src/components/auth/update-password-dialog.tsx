@@ -12,7 +12,9 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog";
-
+import { changePassword } from "@/features/settings/api/settings.api";
+import { useAuth } from "@/features/auth/context/auth.context";
+import { toast } from "sonner";
 interface UpdatePasswordDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -22,9 +24,11 @@ export default function UpdatePasswordDialog({
     open,
     onOpenChange,
 }: UpdatePasswordDialogProps) {
+    const { user } = useAuth();
     const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+
 
     const resetInputFields = () => {
         setCurrentPassword("");
@@ -32,11 +36,45 @@ export default function UpdatePasswordDialog({
         setConfirmPassword("");
     }
 
-    const handleSubmit = () => {
-        // Password update logic will come here
+    const handleSubmit = async () => {
+        if (!user?.username) {
+            return;
+        }
 
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            return;
+        }
 
-        resetInputFields()
+        if (newPassword.length < 10) {
+            return;
+        }
+
+        if (newPassword === currentPassword) {
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            return;
+        }
+
+        try {
+            await changePassword({
+                username: user.username,
+                current_password: currentPassword,
+                new_password: newPassword,
+            });
+
+            resetInputFields();
+            onOpenChange(false);
+            toast.success("Password Changed Successfully")
+        } catch (error) {
+            console.error(
+                "Failed to update password:",
+                error
+            );
+            // toast.error(error)
+
+        }
     };
 
     const handleClose = () => {
@@ -55,7 +93,10 @@ export default function UpdatePasswordDialog({
                         </DialogTitle>
 
                         <DialogDescription className="text-xs">
-                            Signed in as <span className="text-foreground"> admin</span>
+                            Signed in as{" "}
+                            <span className="text-foreground">
+                                {user?.username}
+                            </span>
                         </DialogDescription>
                     </div>
 

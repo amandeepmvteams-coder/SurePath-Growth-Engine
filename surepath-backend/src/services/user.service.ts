@@ -24,7 +24,7 @@ export const userService = {
         displayName: string | null,
         email: string | null,
         password: string,
-        role: string = "user"
+        role: string = "sales"
     ): Promise<User> {
         const existingUser = await userRepository.findByUsername(username);
 
