@@ -212,6 +212,12 @@ export default function SettingsPage() {
             )
         );
     };
+    const handleUserCreated = (newUser: TeamMember) => {
+        setTeamMembers((currentMembers) => [
+            ...currentMembers,
+            newUser,
+        ]);
+    };
     return (
         <section className="w-full">
             <div className="mx-auto w-full max-w-260 space-y-5 px-3 sm:px-4 md:px-5">
@@ -224,6 +230,7 @@ export default function SettingsPage() {
                 <SettingsTeam
                     teamMembers={teamMembers}
                     onUserUpdated={handleUserUpdated}
+                    onUserCreated={handleUserCreated}
                 />
 
                 <SettingsScoring

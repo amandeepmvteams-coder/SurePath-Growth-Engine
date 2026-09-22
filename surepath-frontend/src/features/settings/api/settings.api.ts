@@ -2,7 +2,6 @@ import { apiClient } from "@/lib/api/client";
 import { aiConfigSchema, getTeamMembersResponseSchema, scoringConfigSchema, aiConfigsSchema } from "../schemas/settings.schema";
 import type {
     ScoringConfig,
-    TeamMember,
     GetTeamMembersResponse,
     AIConfig,
     UpdateAIConfigData,
@@ -24,7 +23,7 @@ export async function getScoringConfig(): Promise<ScoringConfig> {
 }
 export async function getTeamMembers(): Promise<GetTeamMembersResponse> {
     const response = await apiClient.get(
-        "/api/v1/users?active_only=true"
+        "/api/v1/users"
     );
 
     return getTeamMembersResponseSchema.parse(response.data);
