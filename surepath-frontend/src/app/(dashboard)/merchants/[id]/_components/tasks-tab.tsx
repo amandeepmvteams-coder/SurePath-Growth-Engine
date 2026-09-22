@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getTeamMembers } from "@/features/settings/api/settings.api";
+import type { TeamMember } from "@/features/settings/types/settings.types";
 import { createMerchantTask, getMerchantTasks } from "@/features/tasks/api/tasks.api";
 import type { MerchantTask } from "@/features/tasks/types/task.types";
 import { Button } from "@/components/ui/button";
@@ -26,11 +28,34 @@ export default function TasksTab({
 
     const [tasks, setTasks] = useState<MerchantTask[]>([]);
     const [tasksLoading, setTasksLoading] = useState(true);
-
+    const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+    const [teamMembersLoading, setTeamMembersLoading] = useState(true);
     const [title, setTitle] = useState("");
     const [details, setDetails] = useState("");
     const [assignee, setAssignee] = useState("Nobody yet");
     const [dueDate, setDueDate] = useState("");
+
+    useEffect(() => {
+        const loadTeamMembers = async () => {
+            try {
+                setTeamMembersLoading(true);
+
+                const result = await getTeamMembers();
+
+                setTeamMembers(result.users);
+            } catch (error) {
+                console.error(
+                    "Failed to load team members:",
+                    error
+                );
+            } finally {
+                setTeamMembersLoading(false);
+            }
+        };
+
+        void loadTeamMembers();
+    }, []);
+
     useEffect(() => {
         const loadTasks = async () => {
             try {
@@ -134,6 +159,7 @@ export default function TasksTab({
                                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                                     <span>
                                         {task.assigned_to?.display_name ??
+                                            task.assigned_to?.username ??
                                             "Nobody yet"}
                                     </span>
 
@@ -172,6 +198,8 @@ export default function TasksTab({
                         <Select
                             value={assignee}
                             onValueChange={setAssignee}
+                            disabled={teamMembersLoading}
+
                         >
                             <SelectTrigger className="h-9 w-full sm:w-27.5">
                                 <SelectValue />
@@ -181,6 +209,15 @@ export default function TasksTab({
                                 <SelectItem value="Nobody yet">
                                     Nobody yet
                                 </SelectItem>
+
+                                {teamMembers.map((member) => (
+                                    <SelectItem
+                                        key={member.id}
+                                        value={member.id}
+                                    >
+                                        {member.display_name || member.username}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
 

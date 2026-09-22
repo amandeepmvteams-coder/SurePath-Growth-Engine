@@ -4,6 +4,7 @@ import {
     Merchant,
     CreateMerchantData,
     UpdateMerchantData,
+    MerchantListItem,
 } from "../types/merchant.types";
 
 class MerchantRepository {
@@ -18,7 +19,7 @@ class MerchantRepository {
         assignedRep?: string,
         sort = "created_at",
         direction = "desc"
-    ): Promise<Merchant[]> {
+    ): Promise<MerchantListItem[]> {
         const conditions: string[] = [];
         const values: unknown[] = [];
 
@@ -73,6 +74,7 @@ class MerchantRepository {
             "platform",
             "country",
             "industry",
+            "fit_score",
         ];
 
         const safeSort = allowedSortFields.includes(sort)
@@ -84,6 +86,11 @@ class MerchantRepository {
             direction.toLowerCase() === "asc"
                 ? "ASC"
                 : "DESC";
+
+        const sortColumn =
+            safeSort === "fit_score"
+                ? "latest_score.fit_score"
+                : `m.${safeSort}`;
 
         // Build WHERE clause
         const whereClause =
@@ -98,37 +105,84 @@ class MerchantRepository {
         values.push(offset);
         const offsetIndex = values.length;
 
-        const result = await pool.query(
+        const result = await pool.query<MerchantListItem>(
             `
     SELECT
-      m.*,
-      CASE
-        WHEN u.id IS NOT NULL THEN
-          json_build_object(
-            'id', u.id,
-            'username', u.username,
-            'display_name', u.display_name,
-            'email', u.email
-          )
-        ELSE NULL
-      END AS assigned_rep
+        m.*,
+
+        CASE
+            WHEN u.id IS NOT NULL THEN
+                json_build_object(
+                    'id', u.id,
+                    'username', u.username,
+                    'display_name', u.display_name,
+                    'email', u.email
+                )
+            ELSE NULL
+        END AS assigned_rep,
+
+        latest_score.fit_score,
+        latest_score.score_factors_assessed,
+        latest_score.score_factors_total,
+        latest_score.opportunity_value,
+
+        platform_provenance.platform_confidence,
+
+        latest_research.last_researched_at
+
     FROM merchants m
 
     LEFT JOIN users u
-      ON m.assigned_rep_id = u.id
+        ON m.assigned_rep_id = u.id
+
+    LEFT JOIN LATERAL (
+        SELECT
+            ms.score AS fit_score,
+            ms.score_factors_assessed,
+            ms.score_factors_total,
+            ms.opportunity_value
+        FROM merchant_scores ms
+        WHERE ms.merchant_id = m.id
+        ORDER BY ms.scored_at DESC
+        LIMIT 1
+    ) latest_score
+        ON TRUE
+
+    LEFT JOIN LATERAL (
+        SELECT
+            mp.confidence AS platform_confidence
+        FROM merchant_provenance mp
+        WHERE mp.merchant_id = m.id
+          AND mp.field_key = 'platform'
+          AND mp.is_current = TRUE
+        ORDER BY mp.verified_at DESC NULLS LAST
+        LIMIT 1
+    ) platform_provenance
+        ON TRUE
+
+    LEFT JOIN LATERAL (
+        SELECT
+            rr.finished_at AS last_researched_at
+        FROM research_runs rr
+        WHERE rr.merchant_id = m.id
+          AND rr.status = 'completed'
+        ORDER BY rr.finished_at DESC NULLS LAST
+        LIMIT 1
+    ) latest_research
+        ON TRUE
 
     ${whereClause}
 
-    ORDER BY m.${safeSort} ${safeDirection}
+   ORDER BY ${sortColumn} ${safeDirection} NULLS LAST
 
     LIMIT $${limitIndex}
     OFFSET $${offsetIndex}
     `,
             values
         );
-
         return result.rows;
     }
+
     async findById(id: string): Promise<Merchant | null> {
         const result = await pool.query(
             `

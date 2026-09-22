@@ -20,7 +20,15 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getActiveUsers } from "@/features/users/api/users.api";
 import type { User } from "@/features/users/types/user.types";
+import { toast } from "sonner";
+import { getMerchantContacts } from "@/features/contacts/api/contacts.api";
+import type { MerchantContact } from "@/features/contacts/types/contact.types";
 
+import { getMerchantScores } from "@/features/scoring/api/scoring.api";
+import type { MerchantScore } from "@/features/scoring/types/scoring.types";
+
+import { getMerchantDetections } from "@/features/detections/api/detection.api";
+import type { MerchantDetection } from "@/features/detections/types/detection.types";
 
 export default function MerchantPage() {
     const params = useParams();
@@ -34,6 +42,38 @@ export default function MerchantPage() {
     const [usersLoading, setUsersLoading] = useState(true);
     const [updatingAssignee, setUpdatingAssignee] = useState(false);
     const [updatingFollowUp, setUpdatingFollowUp] = useState(false);
+    const [contacts, setContacts] = useState<MerchantContact[]>([]);
+    const [scores, setScores] = useState<MerchantScore[]>([]);
+    const [detections, setDetections] = useState<MerchantDetection[]>([]);
+    const [summaryLoading, setSummaryLoading] = useState(true);
+
+    useEffect(() => {
+        const loadSummaryData = async () => {
+            try {
+                setSummaryLoading(true);
+
+                const [scoresResult, detectionsResult, contactsResult] =
+                    await Promise.all([
+                        getMerchantScores(id),
+                        getMerchantDetections(id),
+                        getMerchantContacts(id),
+                    ]);
+
+                setScores(scoresResult);
+                setDetections(detectionsResult);
+                setContacts(contactsResult);
+            } catch (error) {
+                console.error(
+                    "Failed to load merchant summary data:",
+                    error
+                );
+            } finally {
+                setSummaryLoading(false);
+            }
+        };
+
+        void loadSummaryData();
+    }, [id]);
 
     useEffect(() => {
         const loadUsers = async () => {
@@ -65,9 +105,11 @@ export default function MerchantPage() {
                 assigned_rep_id: userId === "unassigned" ? null : userId,
             });
 
+            toast.success(`Sales assigned succesfully`)
             setMerchant(updatedMerchant);
         } catch (error) {
             console.error("Failed to update merchant assignee:", error);
+            toast.error("Failed to update merchant assignee:");
         } finally {
             setUpdatingAssignee(false);
         }
@@ -163,6 +205,19 @@ export default function MerchantPage() {
             console.error("Failed to refresh merchant:", error);
         }
     };
+    const latestScore = scores[0];
+
+    const detectedProviders = detections.filter(
+        (detection) => detection.is_detected
+    );
+
+    const providerSummary =
+        detectedProviders.length > 0
+            ? detectedProviders
+                .map((detection) => detection.provider_name)
+                .join(", ")
+            : "None - fresh";
+
     return (
         <div className="space-y-4">
             {/* Breadcrumb */}
@@ -325,7 +380,11 @@ export default function MerchantPage() {
                         </p>
 
                         <p className="mt-1.5 text-sm text-muted-foreground">
-                            —
+                            {summaryLoading
+                                ? "Loading..."
+                                : latestScore
+                                    ? latestScore.score
+                                    : "—"}
                         </p>
                     </div>
 
@@ -336,7 +395,9 @@ export default function MerchantPage() {
                         </p>
 
                         <p className="mt-1.5 text-sm font-medium text-emerald-600">
-                            None - fresh
+                            {summaryLoading
+                                ? "Loading..."
+                                : providerSummary}
                         </p>
                     </div>
 
@@ -347,7 +408,7 @@ export default function MerchantPage() {
                         </p>
 
                         <p className="mt-1.5 text-lg font-bold">
-                            0
+                            {summaryLoading ? "..." : contacts.length}
                         </p>
                     </div>
 
@@ -358,7 +419,12 @@ export default function MerchantPage() {
                         </p>
 
                         <p className="mt-1.5 text-sm text-muted-foreground/60">
-                            Not established
+                            {summaryLoading
+                                ? "Loading..."
+                                : latestScore?.opportunity_value !== null &&
+                                    latestScore?.opportunity_value !== undefined
+                                    ? latestScore.opportunity_value.toLocaleString()
+                                    : "Not established"}
                         </p>
                     </div>
 
@@ -368,6 +434,10 @@ export default function MerchantPage() {
             <MerchantTabs
                 merchant={merchant}
                 onMerchantRefresh={refreshMerchant}
+                contacts={contacts}
+                scores={scores}
+                summaryLoading={summaryLoading}
+                detections={detections}
             />
         </div>
     );

@@ -106,6 +106,7 @@ export const getMerchantsValidator = [
             "platform",
             "country",
             "industry",
+            "fit_score",
         ])
         .withMessage("Invalid sort field"),
 

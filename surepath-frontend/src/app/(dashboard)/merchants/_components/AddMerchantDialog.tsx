@@ -23,6 +23,7 @@ import {
 
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { industries } from "@/data/filter-options";
 
 interface AddMerchantDialogProps {
     open: boolean;
@@ -171,33 +172,13 @@ export default function AddMerchantDialog({ open, onOpenChange, onAddMerchant }:
                                     </SelectTrigger>
 
                                     <SelectContent>
-                                        <SelectItem value="apparel">
-                                            Apparel
-                                        </SelectItem>
+                                        <SelectItem value="all">All Industries</SelectItem>
 
-                                        <SelectItem value="beauty-skincare">
-                                            Beauty & Skincare
-                                        </SelectItem>
-
-                                        <SelectItem value="home-furniture">
-                                            Home & Furniture
-                                        </SelectItem>
-
-                                        <SelectItem value="health-supplements">
-                                            Health & Supplements
-                                        </SelectItem>
-
-                                        <SelectItem value="electronics">
-                                            Electronics
-                                        </SelectItem>
-
-                                        <SelectItem value="pets">
-                                            Pets
-                                        </SelectItem>
-
-                                        <SelectItem value="other">
-                                            Other
-                                        </SelectItem>
+                                        {industries.map((industry) => (
+                                            <SelectItem key={industry} value={industry}>
+                                                {industry}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
 

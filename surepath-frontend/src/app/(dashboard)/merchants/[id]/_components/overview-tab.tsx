@@ -2,12 +2,9 @@ import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Merchant } from "@/features/merchants/types/merchant.types";
 import type { MerchantContact } from "@/features/contacts/types/contact.types";
-import { getMerchantContacts } from "@/features/contacts/api/contacts.api";
-import { getMerchantScores } from "@/features/scoring/api/scoring.api";
 import type { MerchantScore } from "@/features/scoring/types/scoring.types";
 import { getMerchantProfile } from "@/features/profiles/api/profile.api";
 import type { MerchantProfile } from "@/features/profiles/types/profile.types";
-import { getMerchantDetections } from "@/features/detections/api/detection.api";
 import type { MerchantDetection } from "@/features/detections/types/detection.types";
 import { getMerchantResearch } from "@/features/research/api/research.api";
 import type { ResearchRun } from "@/features/research/types/research.types";
@@ -16,19 +13,22 @@ import type { MerchantStatusHistory } from "@/features/merchants/types/status-hi
 
 interface OverviewTabProps {
     merchant: Merchant;
+    contacts: MerchantContact[];
+    scores: MerchantScore[];
+    detections: MerchantDetection[];
+    summaryLoading: boolean;
 }
 
 export default function OverviewTab({
     merchant,
+    contacts,
+    scores,
+    detections,
+    summaryLoading,
 }: OverviewTabProps) {
-    const [contacts, setContacts] = useState<MerchantContact[]>([]);
-    const [contactsLoading, setContactsLoading] = useState(true);
-    const [scores, setScores] = useState<MerchantScore[]>([]);
-    const [scoresLoading, setScoresLoading] = useState(true);
+
     const [profile, setProfile] = useState<MerchantProfile | null>(null);
     const [profileLoading, setProfileLoading] = useState(true);
-    const [detections, setDetections] = useState<MerchantDetection[]>([]);
-    const [detectionsLoading, setDetectionsLoading] = useState(true);
     const [researchRuns, setResearchRuns] = useState<ResearchRun[]>([]);
     const [researchLoading, setResearchLoading] = useState(true);
     const [statusHistory, setStatusHistory] = useState<MerchantStatusHistory[]>([]);
@@ -85,26 +85,7 @@ export default function OverviewTab({
         void loadResearch();
     }, [merchant.id]);
 
-    useEffect(() => {
-        const loadDetections = async () => {
-            try {
-                setDetectionsLoading(true);
-
-                const result = await getMerchantDetections(merchant.id);
-
-                setDetections(result);
-            } catch (error) {
-                console.error(
-                    "Failed to load merchant detections:",
-                    error
-                );
-            } finally {
-                setDetectionsLoading(false);
-            }
-        };
-
-        void loadDetections();
-    }, [merchant.id]);
+  
 
     useEffect(() => {
         const loadProfile = async () => {
@@ -127,46 +108,7 @@ export default function OverviewTab({
 
 
 
-    useEffect(() => {
-        const loadScores = async () => {
-            try {
-                setScoresLoading(true);
 
-                const result = await getMerchantScores(merchant.id);
-
-                setScores(result);
-            } catch (error) {
-                console.error("Failed to load merchant scores:", error);
-            } finally {
-                setScoresLoading(false);
-            }
-        };
-
-        void loadScores();
-    }, [merchant.id]);
-
-    useEffect(() => {
-        const loadContacts = async () => {
-            try {
-                setContactsLoading(true);
-
-                const result = await getMerchantContacts(
-                    merchant.id
-                );
-
-                setContacts(result);
-            } catch (error) {
-                console.error(
-                    "Failed to load merchant contacts:",
-                    error
-                );
-            } finally {
-                setContactsLoading(false);
-            }
-        };
-
-        void loadContacts();
-    }, [merchant.id]);
     return (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
 
@@ -184,7 +126,7 @@ export default function OverviewTab({
 
                         {/* Content */}
                         <div className="px-4 py-4">
-                            {scoresLoading ? (
+                            {summaryLoading ? (
                                 <p className="text-sm text-muted-foreground">
                                     Loading score...
                                 </p>
@@ -265,7 +207,7 @@ export default function OverviewTab({
 
                         {/* Content */}
                         <div className="space-y-3 px-4 py-4">
-                            {detectionsLoading ? (
+                            {summaryLoading ? (
                                 <p className="text-sm text-muted-foreground">
                                     Loading provider detection...
                                 </p>
@@ -345,7 +287,7 @@ export default function OverviewTab({
 
                         {/* Content */}
                         <div className="space-y-4 px-4 py-4">
-                            {scoresLoading ? (
+                            {summaryLoading ? (
                                 <p className="text-sm text-muted-foreground">
                                     Loading opportunity...
                                 </p>
@@ -469,7 +411,7 @@ export default function OverviewTab({
 
                         {/* Content */}
                         <div className="space-y-3 px-4 py-4">
-                            {contactsLoading ? (
+                            {summaryLoading ? (
                                 <p className="text-sm text-muted-foreground">
                                     Loading contacts...
                                 </p>

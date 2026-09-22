@@ -8,7 +8,9 @@ import {
 } from "@/components/ui/tabs";
 
 import type { Merchant } from "@/features/merchants/types/merchant.types";
-
+import type { MerchantContact } from "@/features/contacts/types/contact.types";
+import type { MerchantScore } from "@/features/scoring/types/scoring.types";
+import type { MerchantDetection } from "@/features/detections/types/detection.types";
 
 import OverviewTab from "./overview-tab";
 import PoliciesTab from "./policies-tab";
@@ -19,13 +21,20 @@ import { useState } from "react";
 
 interface MerchantTabsProps {
     merchant: Merchant;
-  onMerchantRefresh: () => Promise<void>;
-
+    onMerchantRefresh: () => Promise<void>;
+    contacts: MerchantContact[];
+    scores: MerchantScore[];
+    detections: MerchantDetection[];
+    summaryLoading: boolean;
 }
 
 export default function MerchantTabs({
     merchant,
     onMerchantRefresh,
+    contacts,
+    scores,
+    detections,
+    summaryLoading,
 }: MerchantTabsProps) {
     const [activityCount, setActivityCount] = useState(0);
 
@@ -60,7 +69,13 @@ export default function MerchantTabs({
             </TabsList>
 
             <TabsContent value="overview">
-                <OverviewTab merchant={merchant} />
+                <OverviewTab
+                    merchant={merchant}
+                    contacts={contacts}
+                    scores={scores}
+                    detections={detections}
+                    summaryLoading={summaryLoading}
+                />
             </TabsContent>
 
             <TabsContent value="policies">

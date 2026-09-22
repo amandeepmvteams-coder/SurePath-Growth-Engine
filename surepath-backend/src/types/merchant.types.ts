@@ -1,3 +1,11 @@
+export interface MerchantListItem extends Merchant {
+    fit_score: string | null;
+    score_factors_assessed: number | null;
+    score_factors_total: number | null;
+    opportunity_value: string | null;
+    platform_confidence: string | null;
+    last_researched_at: string | null;
+}
 export interface Merchant {
     id: string;
     domain: string;
@@ -14,6 +22,8 @@ export interface Merchant {
     source: string | null;
     created_at: Date;
     updated_at: Date;
+
+
 }
 
 export interface CreateMerchantData {
@@ -36,3 +46,4 @@ export interface UpdateMerchantData {
     outcome_reason?: string | null;
     outcome_at?: Date | null;
 }
+

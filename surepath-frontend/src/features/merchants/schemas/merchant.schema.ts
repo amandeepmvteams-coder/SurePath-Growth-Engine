@@ -24,9 +24,20 @@ export const merchantSchema = z.object({
     source: z.string().nullable(),
     created_at: z.string(),
     updated_at: z.string(),
+
+
 });
+export const merchantListItemSchema = merchantSchema.extend({
+    fit_score: z.string().nullable(),
+    score_factors_assessed: z.number().nullable(),
+    score_factors_total: z.number().nullable(),
+    opportunity_value: z.string().nullable(),
+    platform_confidence: z.string().nullable(),
+    last_researched_at: z.string().nullable(),
+});
+
 export const createMerchantSchema = merchantSchema.omit({
-  assigned_rep: true,
+    assigned_rep: true,
 });
 export const merchantPaginationSchema = z.object({
     total: z.number(),
@@ -35,6 +46,6 @@ export const merchantPaginationSchema = z.object({
 });
 
 export const getMerchantsResponseSchema = z.object({
-    data: z.array(merchantSchema),
+    data: z.array(merchantListItemSchema),
     pagination: merchantPaginationSchema,
 });

@@ -17,6 +17,7 @@ export const merchantStatuses: MerchantStatus[] = [
 ];
 
 export const industries: Industry[] = [
+  "Fashion",
   "Apparel",
   "Home & Furniture",
   "Beauty & Skincare",
@@ -34,9 +35,3 @@ export const countries: Country[] = [
   "India",
 ];
 
-export const merchantOwners: MerchantOwner[] = [
-  "Unassigned",
-  "Admin",
-  "John Doe",
-  "Jane Smith",
-];

@@ -5,6 +5,7 @@ export interface AssignedRep {
     email: string | null;
 }
 
+
 export interface Merchant {
     id: string;
     domain: string;
@@ -22,6 +23,16 @@ export interface Merchant {
     source: string | null;
     created_at: string;
     updated_at: string;
+
+
+}
+export interface MerchantListItem extends Merchant {
+    fit_score: string | null;
+    score_factors_assessed: number | null;
+    score_factors_total: number | null;
+    opportunity_value: string | null;
+    platform_confidence: string | null;
+    last_researched_at: string | null;
 }
 
 export interface MerchantFilters {
@@ -52,6 +63,6 @@ export interface MerchantPagination {
 }
 
 export interface GetMerchantsResponse {
-    data: Merchant[];
+    data: MerchantListItem[];
     pagination: MerchantPagination;
 }

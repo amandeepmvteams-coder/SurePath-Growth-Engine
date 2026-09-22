@@ -6,7 +6,7 @@ import { Download, Plus, Search, SearchX } from "lucide-react";
 import AddMerchantDialog from "./_components/AddMerchantDialog";
 import { Input } from "@/components/ui/input";
 import { getMerchants, createMerchant, deleteMerchant, exportMerchants, } from "@/features/merchants/api/merchants.api";
-import type { Merchant } from "@/features/merchants/types/merchant.types";
+import type { MerchantListItem } from "@/features/merchants/types/merchant.types";
 import {
     Select,
     SelectContent,
@@ -14,7 +14,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { countries, industries, merchantOwners, merchantStatuses } from "@/data/filter-options";
+import { countries, industries, merchantStatuses } from "@/data/filter-options";
 import { Country, CountryFilter, Industry, IndustryFilter, OwnerFilter, StatusFilter } from "@/types/merchant-types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,8 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import DeleteMerchantDialog from "./_components/DeleteMerchantDialog";
 import { useRouter } from "next/navigation";
+import { getActiveUsers } from "@/features/users/api/users.api";
+import { User } from "@/features/users/types/user.types";
 
 
 export default function Page() {
@@ -29,8 +31,9 @@ export default function Page() {
     const router = useRouter()
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-    const [merchantData, setMerchantData] = useState<Merchant[]>([]);
+    const [merchantData, setMerchantData] = useState<MerchantListItem[]>([]);
     const [totalMerchants, setTotalMerchants] = useState(0);
+    const [activeUsers, setActiveUsers] = useState<User[]>([]);
     const itemsPerPage = 10;
     const totalPages = Math.ceil(totalMerchants / itemsPerPage);
 
@@ -48,6 +51,22 @@ export default function Page() {
     });
 
     const [appliedFilters, setAppliedFilters] = useState(filters);
+
+    useEffect(() => {
+        const loadActiveUsers = async () => {
+            try {
+                const users = await getActiveUsers();
+                setActiveUsers(users);
+            } catch (error) {
+                console.error(
+                    "Failed to load active users:",
+                    error
+                );
+            }
+        };
+
+        void loadActiveUsers();
+    }, []);
 
     // Handle Add Merchants Function 
     useEffect(() => {
@@ -71,6 +90,10 @@ export default function Page() {
                     industry:
                         appliedFilters.industry !== "all"
                             ? appliedFilters.industry
+                            : undefined,
+                    assigned_rep:
+                        appliedFilters.owner !== "all"
+                            ? appliedFilters.owner
                             : undefined,
                 });
 
@@ -101,6 +124,7 @@ export default function Page() {
                 store_name: newMerchant.store,
                 country: newMerchant.country,
                 industry: newMerchant.industry,
+                source: "manual",
             });
 
             toast.success("Merchant added successfully");
@@ -124,6 +148,10 @@ export default function Page() {
                 industry:
                     appliedFilters.industry !== "all"
                         ? appliedFilters.industry
+                        : undefined,
+                assigned_rep:
+                    appliedFilters.owner !== "all"
+                        ? appliedFilters.owner
                         : undefined,
             });
 
@@ -171,28 +199,28 @@ export default function Page() {
         setAppliedFilters(filters);
     };
 
-const handleExportMerchants = async () => {
-  try {
-    const blob = await exportMerchants();
+    const handleExportMerchants = async () => {
+        try {
+            const blob = await exportMerchants();
 
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
 
-    link.href = url;
-    link.download = "merchants.csv";
+            link.href = url;
+            link.download = "merchants.csv";
 
-    document.body.appendChild(link);
-    link.click();
+            document.body.appendChild(link);
+            link.click();
 
-    link.remove();
-    window.URL.revokeObjectURL(url);
+            link.remove();
+            window.URL.revokeObjectURL(url);
 
-    toast.success("Merchants exported successfully");
-  } catch (error) {
-    console.error("Failed to export merchants:", error);
-    toast.error("Failed to export merchants");
-  }
-};
+            toast.success("Merchants exported successfully");
+        } catch (error) {
+            console.error("Failed to export merchants:", error);
+            toast.error("Failed to export merchants");
+        }
+    };
 
 
     return (
@@ -284,11 +312,17 @@ const handleExportMerchants = async () => {
                         </SelectTrigger>
 
                         <SelectContent>
-                            <SelectItem value="all">Anyone</SelectItem>
+                            <SelectItem value="all">
+                                Anyone
+                            </SelectItem>
 
-                            {merchantOwners.map((item) => (
-                                <SelectItem key={item} value={item}>
-                                    {item}
+                            <SelectItem value="unassigned">
+                                Unassigned
+                            </SelectItem>
+
+                            {activeUsers.map((user) => (
+                                <SelectItem key={user.id} value={user.id}>
+                                    {user.display_name || user.username}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -482,12 +516,50 @@ const handleExportMerchants = async () => {
                                                     : "—"}
                                             </TableCell>
 
-                                            <TableCell className="px-3 py-2 text-xs">
-                                                —
+                                            <TableCell className="px-3 py-2 text-xs text-center">
+                                                {merchant.platform ? (
+                                                    <div className="flex items-center justify-center gap-1.5">
+                                                        {/* <span className="text-[10px]"></span> */}
+                                                        <span>
+                                                            {merchant.platform_confidence !== null
+                                                                ? `● ${Math.round(
+                                                                    Number(merchant.platform_confidence) * 100
+                                                                )}%`
+                                                                : "—"}
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    "—"
+                                                )}
                                             </TableCell>
 
                                             <TableCell className="whitespace-nowrap px-3 py-2 text-center text-muted-foreground">
-                                                —
+                                                {merchant.fit_score !== null ? (
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className="font-bold text-foreground text-xs leading-none">
+                                                            {Number(merchant.fit_score).toFixed(0)}
+                                                        </span>
+
+                                                        <div className="h-0.75 w-11 overflow-hidden rounded-xl bg-muted">
+                                                            <div
+                                                                className="h-full bg-foreground"
+                                                                style={{
+                                                                    width: `${Math.min(
+                                                                        Number(merchant.fit_score),
+                                                                        100
+                                                                    )}%`,
+                                                                }}
+                                                            />
+                                                        </div>
+
+                                                        <span className="text-[9px] text-muted-foreground">
+                                                            {merchant.score_factors_assessed} of{" "}
+                                                            {merchant.score_factors_total}
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    "—"
+                                                )}
                                             </TableCell>
 
                                             <TableCell className="px-2 py-2">

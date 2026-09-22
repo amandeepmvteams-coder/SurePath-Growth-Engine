@@ -9,6 +9,7 @@ export type MerchantStatus =
   | "Lost";
 
 export type Industry =
+  | "Fashion"
   | "Apparel"
   | "Home & Furniture"
   | "Beauty & Skincare"

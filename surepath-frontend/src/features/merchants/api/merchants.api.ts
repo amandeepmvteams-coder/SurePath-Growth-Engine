@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api/client";
+
 import {
     getMerchantsResponseSchema,
     createMerchantSchema,
@@ -26,6 +27,7 @@ export async function createMerchant(data: {
     store_name: string;
     country?: string;
     industry?: string;
+    source?: string;
 }): Promise<Omit<Merchant, "assigned_rep">> {
     const response = await apiClient.post("/api/v1/merchants", data);
 
@@ -51,17 +53,17 @@ export async function getMerchantById(id: string): Promise<Merchant> {
 }
 
 export async function updateMerchant(
-  id: string,
-  data: Partial<{
-    status: string;
-    assigned_rep_id: string | null;
-    next_follow_up_at: string | null;
-  }>
+    id: string,
+    data: Partial<{
+        status: string;
+        assigned_rep_id: string | null;
+        next_follow_up_at: string | null;
+    }>
 ): Promise<Merchant> {
-  const response = await apiClient.patch(
-    `/api/v1/merchants/${id}`,
-    data
-  );
+    const response = await apiClient.patch(
+        `/api/v1/merchants/${id}`,
+        data
+    );
 
-  return merchantSchema.parse(response.data.data);
+    return merchantSchema.parse(response.data.data);
 }
