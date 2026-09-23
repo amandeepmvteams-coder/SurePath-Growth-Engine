@@ -17,7 +17,7 @@ import {
 import { Label } from "@/components/ui/label";
 import MerchantTabs from "./_components/merchants-tabs";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { getActiveUsers } from "@/features/users/api/users.api";
 import type { User } from "@/features/users/types/user.types";
 import { toast } from "sonner";
@@ -32,6 +32,7 @@ import type { MerchantDetection } from "@/features/detections/types/detection.ty
 
 export default function MerchantPage() {
     const params = useParams();
+    const router = useRouter();
     const id = params.id as string;
 
     const [merchant, setMerchant] = useState<Merchant | null>(null);
@@ -205,6 +206,14 @@ export default function MerchantPage() {
             console.error("Failed to refresh merchant:", error);
         }
     };
+    const loadScores = async () => {
+        try {
+            const result = await getMerchantScores(id);
+            setScores(result);
+        } catch (error) {
+            console.error("Failed to refresh merchant scores:", error);
+        }
+    };
     const latestScore = scores[0];
 
     const detectedProviders = detections.filter(
@@ -218,6 +227,14 @@ export default function MerchantPage() {
                 .join(", ")
             : "None - fresh";
 
+    const loadContacts = async () => {
+        try {
+            const result = await getMerchantContacts(id);
+            setContacts(result);
+        } catch (error) {
+            console.error("Failed to refresh merchant contacts:", error);
+        }
+    };
     return (
         <div className="space-y-4">
             {/* Breadcrumb */}
@@ -244,7 +261,16 @@ export default function MerchantPage() {
                     </a>
                 }
             >
-                <Button size="sm" className="gap-1.5 h-8">
+                <Button
+                    size="sm"
+                    className="gap-1.5 h-8"
+                    onClick={() => {
+                        router.push(
+                            `/pipeline?merchant_id=${encodeURIComponent(id)}`
+                        )
+                    }
+                    }
+                >
                     <Play className="size-3" fill="currentColor" />
                     Run pipeline
                 </Button>
@@ -438,6 +464,8 @@ export default function MerchantPage() {
                 scores={scores}
                 summaryLoading={summaryLoading}
                 detections={detections}
+                onScoresUpdated={loadScores}
+                 onContactsUpdated={loadContacts}
             />
         </div>
     );

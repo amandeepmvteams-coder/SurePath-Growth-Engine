@@ -61,7 +61,14 @@ class AIRunService {
                     config,
                 ])
             );
-
+        console.log(
+            "ACTIVE AI CONFIGS:",
+            configs.map((config) => ({
+                key: config.key,
+                model: config.model,
+                version: config.version,
+            }))
+        );
         /*
          * Load approved SurePath industries.
          */
@@ -122,6 +129,11 @@ class AIRunService {
                             config: prepared.config,
                             input: prepared.input,
                         });
+
+                    console.log("[AI] Provider result:", {
+                        task,
+                        result: providerResult,
+                    });
 
                     await this.handleProviderResult(
                         result,
@@ -206,8 +218,13 @@ class AIRunService {
         configMap: Map<string, any>
     ) {
 
-        const config =
-            configMap.get(task);
+        const configKeyByTask: Record<AIRunTask, string> = {
+            industry_classify: "industry_classify",
+            research_summary: "research_summary",
+            policy_summary: "policy_summary",
+        };
+
+        const config = configMap.get(configKeyByTask[task]);
 
         if (!config) {
             return null;
@@ -245,6 +262,8 @@ class AIRunService {
 
                             current_industry:
                                 merchant.industry ?? null,
+                            research_summary:
+                                merchant.research_summary ?? null,
                         },
 
                         approved_industries:
@@ -301,11 +320,26 @@ class AIRunService {
                             domain:
                                 merchant.domain ?? null,
 
+                            description:
+                                this.truncateText(
+                                    merchant.description,
+                                    2000
+                                ),
+
+                            research_summary:
+                                merchant.research_summary ?? null,
+
                             shipping_policy:
-                                merchant.shipping_policy ?? null,
+                                this.truncateText(
+                                    merchant.shipping_policy,
+                                    6000
+                                ),
 
                             return_policy:
-                                merchant.return_policy ?? null,
+                                this.truncateText(
+                                    merchant.return_policy,
+                                    6000
+                                ),
 
                             existing_shipping_summary:
                                 merchant.shipping_policy_summary ?? null,
@@ -546,6 +580,20 @@ class AIRunService {
         }
     }
 
+    private truncateText(
+        value: string | null | undefined,
+        maxLength: number
+    ): string | null {
+        if (!value) {
+            return null;
+        }
+
+        if (value.length <= maxLength) {
+            return value;
+        }
+
+        return `${value.slice(0, maxLength)}\n[Content truncated]`;
+    }
 
     private recordTaskResult(
         result: AIRunResult,

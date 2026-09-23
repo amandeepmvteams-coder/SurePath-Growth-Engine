@@ -3,13 +3,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { Merchant } from "@/features/merchants/types/merchant.types";
 import type { MerchantContact } from "@/features/contacts/types/contact.types";
 import type { MerchantScore } from "@/features/scoring/types/scoring.types";
-import { getMerchantProfile } from "@/features/profiles/api/profile.api";
+import { getMerchantProfile, updateMerchantProfile, } from "@/features/profiles/api/profile.api";
 import type { MerchantProfile } from "@/features/profiles/types/profile.types";
 import type { MerchantDetection } from "@/features/detections/types/detection.types";
 import { getMerchantResearch } from "@/features/research/api/research.api";
 import type { ResearchRun } from "@/features/research/types/research.types";
 import { getMerchantStatusHistory } from "@/features/merchants/api/status-history.api";
 import type { MerchantStatusHistory } from "@/features/merchants/types/status-history.types";
+import { runScoring } from "@/features/pipeline/api/pipeline.api";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { updateMerchant } from "@/features/merchants/api/merchants.api";
+import { createMerchantContact } from "@/features/contacts/api/contacts.api";
+import { getCurrentUser } from "@/features/auth/api/auth.api";
 
 interface OverviewTabProps {
     merchant: Merchant;
@@ -17,6 +23,9 @@ interface OverviewTabProps {
     scores: MerchantScore[];
     detections: MerchantDetection[];
     summaryLoading: boolean;
+    onScoresUpdated: () => Promise<void>;
+    onMerchantRefresh: () => Promise<void>;
+    onContactsUpdated: () => Promise<void>;
 }
 
 export default function OverviewTab({
@@ -25,6 +34,9 @@ export default function OverviewTab({
     scores,
     detections,
     summaryLoading,
+    onScoresUpdated,
+    onMerchantRefresh,
+    onContactsUpdated,
 }: OverviewTabProps) {
 
     const [profile, setProfile] = useState<MerchantProfile | null>(null);
@@ -33,12 +45,34 @@ export default function OverviewTab({
     const [researchLoading, setResearchLoading] = useState(true);
     const [statusHistory, setStatusHistory] = useState<MerchantStatusHistory[]>([]);
     const [statusHistoryLoading, setStatusHistoryLoading] = useState(true);
+    const [isEditingOpportunity, setIsEditingOpportunity] = useState(false);
+    const [monthlyOrders, setMonthlyOrders] = useState("");
+    const [averageOrderValue, setAverageOrderValue] = useState("");
+    const [savingOpportunity, setSavingOpportunity] = useState(false);
+    const [isEditingDetails, setIsEditingDetails] = useState(false);
+
+    const [storeName, setStoreName] = useState("");
+    const [industry, setIndustry] = useState("");
+    const [country, setCountry] = useState("");
+
+    const [isAddingContact, setIsAddingContact] = useState(false);
+
+    const [contactName, setContactName] = useState("");
+    const [contactRole, setContactRole] = useState("");
+    const [contactEmail, setContactEmail] = useState("");
+    const [contactPhone, setContactPhone] = useState("");
+    const [contactIsPrimary, setContactIsPrimary] = useState(false);
+
+    const [savingContact, setSavingContact] = useState(false);
+    const [savingDetails, setSavingDetails] = useState(false);
+
+
+
+    const latestScore = scores[0];
 
     const latestCompletedResearch = researchRuns.find(
         (run) => run.status === "completed"
     );
-    const latestScore = scores[0];
-
     const shopifyDetection = detections.find(
         (detection) =>
             detection.provider_name.toLowerCase() === "shopify"
@@ -85,7 +119,7 @@ export default function OverviewTab({
         void loadResearch();
     }, [merchant.id]);
 
-  
+
 
     useEffect(() => {
         const loadProfile = async () => {
@@ -95,6 +129,19 @@ export default function OverviewTab({
                 const result = await getMerchantProfile(merchant.id);
 
                 setProfile(result);
+
+                if (result) {
+                    setMonthlyOrders(
+                        result.estimated_monthly_orders?.toString() ?? ""
+                    );
+
+                    setAverageOrderValue(
+                        result.avg_order_value?.toString() ?? ""
+                    );
+                } else {
+                    setMonthlyOrders("");
+                    setAverageOrderValue("");
+                }
             } catch (error) {
                 console.error("Failed to load merchant profile:", error);
             } finally {
@@ -105,9 +152,88 @@ export default function OverviewTab({
         void loadProfile();
     }, [merchant.id]);
 
+    const handleEditDetails = () => {
+        setStoreName(merchant.store_name ?? "");
+        setIndustry(merchant.industry ?? "");
+        setCountry(merchant.country ?? "");
 
+        setIsEditingDetails(true);
+    };
+    const handleSaveDetails = async () => {
+        try {
+            setSavingDetails(true);
 
+            await updateMerchant(merchant.id, {
+                store_name: storeName.trim() || null,
+                industry: industry.trim() || null,
+                country: country.trim() || null,
+            });
 
+            await onMerchantRefresh();
+            await onScoresUpdated();
+
+            setIsEditingDetails(false);
+        } catch (error) {
+            console.error("Failed to update merchant details:", error);
+        } finally {
+            setSavingDetails(false);
+        }
+    };
+    const handleCancelDetails = () => {
+        setStoreName(merchant.store_name ?? "");
+        setIndustry(merchant.industry ?? "");
+        setCountry(merchant.country ?? "");
+
+        setIsEditingDetails(false);
+    };
+
+    const handleSaveContact = async () => {
+        if (!contactName.trim()) {
+            return;
+        }
+
+        try {
+            setSavingContact(true);
+
+            const currentUser = await getCurrentUser();
+
+            const userId = currentUser.user.id;
+
+            await createMerchantContact(merchant.id, {
+                name: contactName.trim(),
+                role: contactRole.trim() || undefined,
+                email: contactEmail.trim() || undefined,
+                phone: contactPhone.trim() || undefined,
+                is_primary: contactIsPrimary,
+                created_by: userId,
+                owner_id: userId,
+            });
+
+            await onContactsUpdated();
+
+            setContactName("");
+            setContactRole("");
+            setContactEmail("");
+            setContactPhone("");
+            setContactIsPrimary(false);
+
+            setIsAddingContact(false);
+        } catch (error) {
+            console.error("Failed to create merchant contact:", error);
+        } finally {
+            setSavingContact(false);
+        }
+    };
+
+    const handleCancelContact = () => {
+        setContactName("");
+        setContactRole("");
+        setContactEmail("");
+        setContactPhone("");
+        setContactIsPrimary(false);
+
+        setIsAddingContact(false);
+    };
 
     return (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
@@ -295,31 +421,151 @@ export default function OverviewTab({
                                 latestScore?.opportunity_value !== undefined ? (
                                 <div>
                                     <p className="text-2xl font-semibold">
-                                        {latestScore?.opportunity_value.toLocaleString()}
+                                        {latestScore.opportunity_value.toLocaleString()}
                                     </p>
 
                                     <p className="text-xs text-muted-foreground">
                                         Estimated opportunity value
                                     </p>
                                 </div>
+                            ) : !isEditingOpportunity ? (
+                                <div className="space-y-3">
+                                    <p className="text-sm text-muted-foreground">
+                                        Not established.
+                                    </p>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsEditingOpportunity(true)}
+                                        className="text-sm font-medium cursor-pointer hover:underline"
+                                    >
+                                        Enter order volume
+                                    </button>
+                                </div>
                             ) : (
-                                <p className="text-sm text-muted-foreground">
-                                    Not established.
-                                </p>
+                                <div className="space-y-4">
+                                    {/* Monthly orders */}
+                                    <div className="space-y-1.5">
+                                        <label
+                                            htmlFor="monthly-orders"
+                                            className="text-xs font-medium"
+                                        >
+                                            Monthly orders
+                                        </label>
+
+                                        <input
+                                            id="monthly-orders"
+                                            type="number"
+                                            min="0"
+                                            value={monthlyOrders}
+                                            onChange={(event) =>
+                                                setMonthlyOrders(event.target.value)
+                                            }
+                                            className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
+                                            placeholder="Enter monthly orders"
+                                        />
+                                    </div>
+
+                                    {/* Average order value */}
+                                    <div className="space-y-1.5">
+                                        <label
+                                            htmlFor="average-order-value"
+                                            className="text-xs font-medium"
+                                        >
+                                            Average order value
+                                        </label>
+
+                                        <input
+                                            id="average-order-value"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={averageOrderValue}
+                                            onChange={(event) =>
+                                                setAverageOrderValue(event.target.value)
+                                            }
+                                            className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
+                                            placeholder="Enter average order value"
+                                        />
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            disabled={savingOpportunity}
+                                            onClick={async () => {
+                                                const orders = Number(monthlyOrders);
+                                                const orderValue = Number(averageOrderValue);
+
+                                                if (
+                                                    !Number.isFinite(orders) ||
+                                                    orders < 0 ||
+                                                    !Number.isFinite(orderValue) ||
+                                                    orderValue < 0
+                                                ) {
+                                                    return;
+                                                }
+
+                                                try {
+                                                    setSavingOpportunity(true);
+
+                                                    const updatedProfile =
+                                                        await updateMerchantProfile(
+                                                            merchant.id,
+                                                            {
+                                                                estimated_monthly_orders: orders,
+                                                                avg_order_value: orderValue.toString(),
+                                                            }
+                                                        );
+
+                                                    setProfile(updatedProfile);
+
+                                                    await runScoring([merchant.id]);
+
+                                                    await onScoresUpdated();
+
+                                                    setIsEditingOpportunity(false);
+                                                } catch (error) {
+                                                    console.error(
+                                                        "Failed to update opportunity:",
+                                                        error
+                                                    );
+                                                } finally {
+                                                    setSavingOpportunity(false);
+                                                }
+                                            }}
+                                            className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium cursor-pointer text-background disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {savingOpportunity ? "Saving..." : "Save"}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            disabled={savingOpportunity}
+                                            onClick={() => setIsEditingOpportunity(false)}
+                                            className="text-sm font-medium hover:underline cursor-pointer disabled:opacity-50"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
                             )}
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Details */}
+
                 <Card>
+                    {/* Header */}
+                    <div className="border-b px-4 py-3">
+                        <p className="text-sm font-semibold">
+                            Details
+                        </p>
+                    </div>
                     <CardContent className="p-0">
-                        {/* Header */}
-                        <div className="border-b px-4 py-3">
-                            <p className="text-sm font-semibold">
-                                Details
-                            </p>
-                        </div>
+
 
                         {/* Details */}
                         <div className="space-y-4 px-4 py-4">
@@ -391,12 +637,85 @@ export default function OverviewTab({
                             {/* Action */}
                             <button
                                 type="button"
-                                className="text-sm font-medium hover:underline"
+                                onClick={handleEditDetails}
+                                className="text-sm font-medium cursor-pointer hover:underline"
                             >
                                 Edit details
                             </button>
                         </div>
                     </CardContent>
+                    {/* </CardContent> */}
+                    {isEditingDetails && (
+                        <CardContent>
+                            {/* Store name */}
+
+                            <div className="space-y-1">
+                                <label className="text-[11px] text-muted-foreground">
+                                    Store name
+                                </label>
+
+                                <Input
+                                    value={storeName}
+                                    onChange={(event) =>
+                                        setStoreName(event.target.value)
+                                    }
+                                />
+                            </div>
+
+                            {/* Industry */}
+                            <div className="space-y-1">
+                                <label className="text-[11px] text-muted-foreground">
+                                    Industry
+                                </label>
+
+                                <Input
+                                    value={industry}
+                                    onChange={(event) =>
+                                        setIndustry(event.target.value)
+                                    }
+                                />
+                            </div>
+
+                            {/* Country */}
+                            <div className="space-y-1">
+                                <label className="text-[11px] text-muted-foreground">
+                                    Country
+                                </label>
+
+                                <Input
+                                    value={country}
+                                    onChange={(event) =>
+                                        setCountry(event.target.value)
+                                    }
+                                />
+                            </div>
+
+                            <p className="text-[11px] leading-4 text-muted-foreground">
+                                Saving marks these fields as corrected by a person —
+                                automated research will not overwrite it.
+                            </p>
+
+                            <div className="flex items-center gap-4 pt-1">
+                                <Button
+                                    type="button"
+                                    onClick={handleSaveDetails}
+                                    disabled={savingDetails}
+                                    className="h-8 px-4 text-xs"
+                                >
+                                    {savingDetails ? "Saving..." : "Save"}
+                                </Button>
+
+                                <button
+                                    type="button"
+                                    onClick={handleCancelDetails}
+                                    disabled={savingDetails}
+                                    className="text-xs text-muted-foreground cursor-pointer hover:text-foreground"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </CardContent>
+                    )}
                 </Card>
 
                 {/* Contacts */}
@@ -464,11 +783,112 @@ export default function OverviewTab({
 
                             <button
                                 type="button"
-                                className="text-sm font-medium hover:underline"
+                                onClick={() => setIsAddingContact(true)}
+                                className="text-sm font-medium cursor-pointer hover:underline"
                             >
                                 Add contact
                             </button>
                         </div>
+                        {isAddingContact && (
+                            <div className="border-t px-4 py-4">
+                                <div className="space-y-2 grid grid-cols-2 gap-2">
+                                    {/* Name */}
+                                    <div className="space-y-1 ">
+                                        <label className="text-[11px] text-muted-foreground">
+                                            Name
+                                        </label>
+
+                                        <Input
+                                            value={contactName}
+                                            onChange={(event) =>
+                                                setContactName(event.target.value)
+                                            }
+                                            placeholder="Enter contact name"
+                                        />
+                                    </div>
+
+                                    {/* Role */}
+                                    <div className="space-y-1">
+                                        <label className="text-[11px] text-muted-foreground">
+                                            Role
+                                        </label>
+
+                                        <Input
+                                            value={contactRole}
+                                            onChange={(event) =>
+                                                setContactRole(event.target.value)
+                                            }
+                                            placeholder="Enter role"
+                                        />
+                                    </div>
+
+                                    {/* Email */}
+                                    <div className="space-y-1">
+                                        <label className="text-[11px] text-muted-foreground">
+                                            Email
+                                        </label>
+
+                                        <Input
+                                            type="email"
+                                            value={contactEmail}
+                                            onChange={(event) =>
+                                                setContactEmail(event.target.value)
+                                            }
+                                            placeholder="Enter email"
+                                        />
+                                    </div>
+
+                                    {/* Phone */}
+                                    <div className="space-y-1">
+                                        <label className="text-[11px] text-muted-foreground">
+                                            Phone
+                                        </label>
+
+                                        <Input
+                                            value={contactPhone}
+                                            onChange={(event) =>
+                                                setContactPhone(event.target.value)
+                                            }
+                                            placeholder="Enter phone"
+                                        />
+                                    </div>
+
+                                    {/* Primary */}
+                                    <label className="flex items-center gap-2 text-xs">
+                                        <input
+                                            type="checkbox"
+                                            checked={contactIsPrimary}
+                                            onChange={(event) =>
+                                                setContactIsPrimary(event.target.checked)
+                                            }
+                                        />
+
+                                        Primary contact
+                                    </label>
+
+                                    {/* Actions */}
+                                    <div className="col-span-2 flex items-center gap-4 pt-1">
+                                        <Button
+                                            type="button"
+                                            onClick={handleSaveContact}
+                                            disabled={savingContact || !contactName.trim()}
+                                            className="h-8 px-4 text-xs cursor-pointer"
+                                        >
+                                            {savingContact ? "Saving..." : "Save"}
+                                        </Button>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleCancelContact}
+                                            disabled={savingContact}
+                                            className="text-xs text-muted-foreground cursor-pointer hover:text-foreground"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -515,6 +935,6 @@ export default function OverviewTab({
                     </CardContent>
                 </Card>
             </div>
-        </div>
+        </div >
     );
 }

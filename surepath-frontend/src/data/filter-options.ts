@@ -2,7 +2,6 @@ import type {
   MerchantStatus,
   Industry,
   Country,
-  MerchantOwner,
 } from "@/types/merchant-types";
 
 export const merchantStatuses: MerchantStatus[] = [

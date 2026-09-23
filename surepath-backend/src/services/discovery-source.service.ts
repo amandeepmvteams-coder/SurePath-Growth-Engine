@@ -47,17 +47,41 @@ class DiscoverySourceService {
 
         const candidates: DiscoveryCandidate[] = [
             {
-                domain: "example.com",
-                platform: "unknown",
-                store_name: "Example Store",
-                country: "United States",
-                industry: "General",
-                confidence: 0.95,
-                evidence: {
-                    source: "mock",
-                    purpose: "research_pipeline_test",
-                },
+            domain: "bombas.com",
+            platform: "shopify",
+            store_name: "Bombas",
+            country: "United States",
+            industry: "Apparel & Accessories",
+            confidence: 0.95,
+            evidence: {
+                source: "mock",
+                purpose: "discovery_pipeline_test",
             },
+        },
+        {
+            domain: "kyliecosmetics.com",
+            platform: "shopify",
+            store_name: "Kylie Cosmetics",
+            country: "United States",
+            industry: "Beauty & Cosmetics",
+            confidence: 0.95,
+            evidence: {
+                source: "mock",
+                purpose: "discovery_pipeline_test",
+            },
+        },
+        {
+            domain: "colourpop.com",
+            platform: "shopify",
+            store_name: "ColourPop",
+            country: "United States",
+            industry: "Beauty & Cosmetics",
+            confidence: 0.95,
+            evidence: {
+                source: "mock",
+                purpose: "discovery_pipeline_test",
+            },
+        },
         ];
 
         return candidates.slice(

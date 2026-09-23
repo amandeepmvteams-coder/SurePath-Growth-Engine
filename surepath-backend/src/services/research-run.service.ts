@@ -61,6 +61,9 @@ const PAGE_DEFINITIONS: PageDefinition[] = [
 const REQUEST_DELAY_MS = 1000;
 const MAX_RETRIES = 2;
 
+const WEBSITE_PROTECTED_ERROR =
+    "Website protected by challenge. Skipping remaining page discovery.";
+
 class ResearchService {
     private async delay(ms: number) {
         await new Promise((resolve) =>
@@ -191,7 +194,12 @@ class ResearchService {
 
         throw lastError;
     }
-
+    private isChallengeResponse(response: Response): boolean {
+        return (
+            response.status === 429 &&
+            response.headers.get("x-vercel-mitigated") === "challenge"
+        );
+    }
     private async fetchPage(
         url: string,
         pageType: string
@@ -219,16 +227,79 @@ class ResearchService {
                 console.log(
                     `[Research] Response ${response.status}: ${url}`
                 );
-
+               
                 const contentType =
                     response.headers.get("content-type");
 
-                // HTTP error = page missing
-                if (!response.ok) {
+                // Page does not exist.
+                if (response.status === 404 || response.status === 410) {
                     return {
                         url,
                         pageType,
                         status: "missing",
+                        statusCode: response.status,
+                        contentType,
+                        title: null,
+                        content: null,
+                        error: `HTTP ${response.status}`,
+                    };
+                }
+
+                // Rate limited by the merchant website.
+                if (response.status === 429) {
+                    if (this.isChallengeResponse(response)) {
+                        return {
+                            url,
+                            pageType,
+                            status: "failed",
+                            statusCode: response.status,
+                            contentType,
+                            title: null,
+                            content: null,
+                            error: WEBSITE_PROTECTED_ERROR,
+                        };
+                    }
+
+                    if (attempt < MAX_RETRIES) {
+                        const retryAfter =
+                            response.headers.get("retry-after");
+
+                        const retryAfterSeconds = retryAfter
+                            ? Number(retryAfter)
+                            : NaN;
+
+                        const backoff = Number.isFinite(
+                            retryAfterSeconds
+                        )
+                            ? retryAfterSeconds * 1000
+                            : 2000 * Math.pow(2, attempt);
+
+                        console.log(
+                            `[Research] Rate limited: ${url}. Retrying in ${backoff}ms...`
+                        );
+
+                        await this.delay(backoff);
+                        continue;
+                    }
+
+                    return {
+                        url,
+                        pageType,
+                        status: "failed",
+                        statusCode: response.status,
+                        contentType,
+                        title: null,
+                        content: null,
+                        error: "HTTP 429 - Too Many Requests",
+                    };
+                }
+
+                // Other HTTP errors should not be treated as missing pages.
+                if (!response.ok) {
+                    return {
+                        url,
+                        pageType,
+                        status: "failed",
                         statusCode: response.status,
                         contentType,
                         title: null,
@@ -275,7 +346,6 @@ class ResearchService {
                     continue;
                 }
 
-                // Network / timeout failure
                 return {
                     url,
                     pageType,
@@ -300,12 +370,18 @@ class ResearchService {
             error: "Request failed",
         };
     }
+
+
+
     async researchMerchant(
         merchantId: string
     ) {
         console.log(
             `[Research] Starting research for merchant: ${merchantId}`
         );
+
+
+
         const merchant =
             await merchantRepository.findById(
                 merchantId
@@ -355,11 +431,155 @@ class ResearchService {
             let pagesMissing = 0;
             let pagesFailed = 0;
 
-            for (const page of PAGE_DEFINITIONS) {
+            // Discover useful internal pages from the homepage
+            const homepageUrl = `${baseUrl}/`;
+
+            console.log(
+                `[Research] Discovering internal pages from homepage...`
+            );
+
+            const homepageResult = await this.fetchPage(
+                homepageUrl,
+                "homepage"
+            );
+            if (
+                homepageResult.status === "failed" &&
+                homepageResult.error === WEBSITE_PROTECTED_ERROR
+            ) {
                 console.log(
-                    `[Research] Fetching: ${page.type} -> ${page.path}`
+                    `[Research] Website protected by challenge. Skipping remaining page discovery.`
                 );
-                const url = `${baseUrl}${page.path}`;
+
+                await researchPageRepository.create({
+                    research_run_id: researchRun.id,
+                    merchant_id: merchantId,
+                    url: homepageResult.url,
+                    page_type: homepageResult.pageType,
+                    status: homepageResult.status,
+                    status_code: homepageResult.statusCode,
+                    content_type: homepageResult.contentType,
+                    title: homepageResult.title,
+                    content: homepageResult.content,
+                    error: homepageResult.error,
+                });
+
+                await researchRunRepository.markFailed(
+                    researchRun.id,
+                    WEBSITE_PROTECTED_ERROR
+                );
+
+                throw new Error(
+                    WEBSITE_PROTECTED_ERROR
+                );
+            }
+
+
+            const discoveredPages: Array<{
+                type: string;
+                url: string;
+            }> = [];
+
+            if (
+                homepageResult.status === "found" &&
+                homepageResult.content
+            ) {
+                const internalLinks = this.extractInternalLinks(
+                    homepageResult.content,
+                    baseUrl
+                );
+
+                const discoveredKeys = new Set<string>();
+
+                for (const url of internalLinks) {
+                    const type = this.classifyDiscoveredPage(url);
+
+                    if (!type) {
+                        continue;
+                    }
+
+                    const key = `${type}:${url}`;
+
+                    if (discoveredKeys.has(key)) {
+                        continue;
+                    }
+
+                    discoveredKeys.add(key);
+
+                    discoveredPages.push({
+                        type,
+                        url,
+                    });
+                }
+
+                console.log(
+                    `[Research] Discovered internal pages:`,
+                    discoveredPages
+                );
+
+                console.log(
+                    `[Research] Discovered ${discoveredPages.length} useful internal pages`
+                );
+            } else {
+                console.log(
+                    `[Research] Could not discover internal pages because homepage was not found`
+                );
+            }
+
+            const pagesToFetch: Array<{
+                type: string;
+                url: string;
+            }> = [];
+
+            const queuedUrls = new Set<string>();
+
+            const discoveredByType = new Map<string, string>();
+
+            for (const page of discoveredPages) {
+                if (!discoveredByType.has(page.type)) {
+                    discoveredByType.set(page.type, page.url);
+                }
+            }
+
+            // A refund policy can also serve as the returns policy source.
+            if (
+                !discoveredByType.has("returns") &&
+                discoveredByType.has("refund")
+            ) {
+                discoveredByType.set(
+                    "returns",
+                    discoveredByType.get("refund")!
+                );
+            }
+
+            for (const page of PAGE_DEFINITIONS) {
+                const discoveredUrl = discoveredByType.get(page.type);
+
+                const url = discoveredUrl
+                    ? discoveredUrl
+                    : `${baseUrl}${page.path}`;
+
+                if (queuedUrls.has(url)) {
+                    continue;
+                }
+
+                queuedUrls.add(url);
+
+                pagesToFetch.push({
+                    type: page.type,
+                    url,
+                });
+            }
+
+            console.log(
+                `[Research] Total pages queued: ${pagesToFetch.length}`
+            );
+
+            for (const page of pagesToFetch) {
+                console.log(
+                    `[Research] Fetching: ${page.type} -> ${page.url}`
+                );
+
+                const url = page.url;
 
                 const result = await this.fetchPage(
                     url,
@@ -435,6 +655,107 @@ class ResearchService {
 
             throw error;
         }
+    }
+    private extractInternalLinks(
+        html: string,
+        baseUrl: string
+    ): string[] {
+        const links = new Set<string>();
+
+        const base = new URL(baseUrl);
+
+        const hrefRegex =
+            /<a\b[^>]*href=["']([^"']+)["']/gi;
+
+        let match: RegExpExecArray | null;
+
+        while ((match = hrefRegex.exec(html)) !== null) {
+            const href = match[1].trim();
+
+            if (!href || href.startsWith("#")) {
+                continue;
+            }
+
+            if (
+                href.startsWith("mailto:") ||
+                href.startsWith("tel:") ||
+                href.startsWith("javascript:")
+            ) {
+                continue;
+            }
+
+            try {
+                const url = new URL(href, baseUrl);
+
+                if (url.hostname !== base.hostname) {
+                    continue;
+                }
+
+                url.hash = "";
+
+                links.add(url.toString());
+            } catch {
+                continue;
+            }
+        }
+
+        return [...links];
+    }
+
+    private classifyDiscoveredPage(
+        url: string
+    ): string | null {
+        const pathname =
+            new URL(url).pathname.toLowerCase();
+
+        if (
+            pathname.includes("/about") ||
+            pathname.includes("/pages/about") ||
+            pathname.includes("/pages/about-us") ||
+            pathname.includes("/about-us")
+        ) {
+            return "about";
+        }
+
+        if (
+            pathname.includes("/contact") ||
+            pathname.includes("/pages/contact") ||
+            pathname.includes("/pages/contact-us") ||
+            pathname.includes("/contact-us")
+        ) {
+            return "contact";
+        }
+
+        if (
+            pathname.includes("/shipping") ||
+            pathname.includes("shipping-policy") ||
+            pathname.includes("shipping-information") ||
+            pathname.includes("delivery-policy") ||
+            pathname.includes("delivery-information")
+        ) {
+            return "shipping";
+        }
+
+        if (pathname.includes("refund")) {
+            return "refund";
+        }
+
+        if (pathname.includes("return")) {
+            return "returns";
+        }
+
+        if (pathname.includes("privacy")) {
+            return "privacy";
+        }
+
+        if (
+            pathname.includes("terms") ||
+            pathname.includes("conditions")
+        ) {
+            return "terms";
+        }
+
+        return null;
     }
 }
 

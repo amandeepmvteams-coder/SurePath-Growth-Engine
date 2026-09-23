@@ -16,21 +16,21 @@ class AIConfigService {
         if (configs.length === 0) {
             const defaults: CreateAIConfigInput[] = [
                 {
-                    key: "industry_classification",
+                    key: "industry_classify",
                     prompt_template: "Classify the merchant into one supported industry.",
-                    model: "gpt-5-mini",
+                    model: "openai/gpt-oss-20b",
                     params: { temperature: 0 }
                 },
                 {
                     key: "research_summary",
                     prompt_template: "Write a concise research summary using collected merchant facts only.",
-                    model: "gpt-5-mini",
+                    model: "openai/gpt-oss-20b",
                     params: { temperature: 0.2 }
                 },
                 {
                     key: "policy_summary",
                     prompt_template: "Summarize shipping and return policy using collected merchant data only.",
-                    model: "gpt-5-mini",
+                    model: "openai/gpt-oss-20b",
                     params: { temperature: 0 }
                 }
             ];

@@ -26,6 +26,8 @@ interface MerchantTabsProps {
     scores: MerchantScore[];
     detections: MerchantDetection[];
     summaryLoading: boolean;
+    onScoresUpdated: () => Promise<void>;
+    onContactsUpdated: () => Promise<void>;
 }
 
 export default function MerchantTabs({
@@ -35,6 +37,9 @@ export default function MerchantTabs({
     scores,
     detections,
     summaryLoading,
+    onScoresUpdated,
+    onContactsUpdated,
+
 }: MerchantTabsProps) {
     const [activityCount, setActivityCount] = useState(0);
 
@@ -70,11 +75,14 @@ export default function MerchantTabs({
 
             <TabsContent value="overview">
                 <OverviewTab
+                    onScoresUpdated={onScoresUpdated}
                     merchant={merchant}
                     contacts={contacts}
                     scores={scores}
                     detections={detections}
                     summaryLoading={summaryLoading}
+                    onMerchantRefresh={onMerchantRefresh}
+                    onContactsUpdated={onContactsUpdated}
                 />
             </TabsContent>
 

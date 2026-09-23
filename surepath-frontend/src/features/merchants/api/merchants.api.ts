@@ -55,6 +55,9 @@ export async function getMerchantById(id: string): Promise<Merchant> {
 export async function updateMerchant(
     id: string,
     data: Partial<{
+        store_name: string | null;
+        country: string | null;
+        industry: string | null;
         status: string;
         assigned_rep_id: string | null;
         next_follow_up_at: string | null;

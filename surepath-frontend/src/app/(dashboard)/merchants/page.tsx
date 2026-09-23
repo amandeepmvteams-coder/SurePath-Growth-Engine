@@ -576,7 +576,12 @@ export default function Page() {
                                                     <Button
                                                         size="sm"
                                                         className="h-6 bg-[#202124] px-2 text-[10px] text-white"
-                                                        onClick={(e) => e.stopPropagation()}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            router.push(
+                                                                `/pipeline?merchant_id=${encodeURIComponent(merchant.id)}`
+                                                            );
+                                                        }}
                                                     >
                                                         ▶ Run
                                                     </Button>

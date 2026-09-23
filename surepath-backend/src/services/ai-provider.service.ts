@@ -171,12 +171,19 @@ ${basePrompt}
 You are performing the SurePath merchant policy summary task.
 
 Rules:
-1. Use ONLY the supplied shipping and return policy information.
-2. Do not invent policy details.
-3. Do not assume policies that are not supplied.
-4. Summarize shipping and return policies separately.
-5. If neither policy contains sufficient information, reject the task.
-6. Return valid JSON only.
+1. Use ONLY information supplied in the merchant input.
+2. Shipping and return information may appear in:
+   - shipping_policy
+   - return_policy
+   - description
+   - research_summary
+3. Do not invent policy details.
+4. Do not assume policies that are not explicitly supported by the supplied information.
+5. Summarize shipping and return policies separately.
+6. Only produce a shipping summary when the supplied information supports it.
+7. Only produce a return summary when the supplied information supports it.
+8. If neither shipping nor return information is sufficiently supported, reject the task.
+9. Return valid JSON only.
 
 Required JSON format:
 {
@@ -190,7 +197,7 @@ If insufficient information:
   "status": "rejected",
   "reason": "Insufficient policy information"
 }
-            `.trim();
+`.trim();
         }
 
 
@@ -235,9 +242,9 @@ If insufficient information:
 
         if (
             parsed.status !==
-                "completed" &&
+            "completed" &&
             parsed.status !==
-                "rejected"
+            "rejected"
         ) {
 
             throw new Error(
@@ -256,7 +263,7 @@ If insufficient information:
                 status: "rejected",
                 reason:
                     typeof parsed.reason ===
-                    "string"
+                        "string"
                         ? parsed.reason
                         : "AI rejected the task",
             };
@@ -273,7 +280,7 @@ If insufficient information:
                 status: "completed",
                 industry:
                     typeof parsed.industry ===
-                    "string"
+                        "string"
                         ? parsed.industry
                         : null,
             };
@@ -290,7 +297,7 @@ If insufficient information:
                 status: "completed",
                 research_summary:
                     typeof parsed.research_summary ===
-                    "string"
+                        "string"
                         ? parsed.research_summary
                         : null,
             };
@@ -308,13 +315,13 @@ If insufficient information:
 
                 shipping_policy_summary:
                     typeof parsed.shipping_policy_summary ===
-                    "string"
+                        "string"
                         ? parsed.shipping_policy_summary
                         : null,
 
                 return_policy_summary:
                     typeof parsed.return_policy_summary ===
-                    "string"
+                        "string"
                         ? parsed.return_policy_summary
                         : null,
             };
