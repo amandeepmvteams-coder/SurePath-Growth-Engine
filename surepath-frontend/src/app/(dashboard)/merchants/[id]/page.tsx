@@ -195,7 +195,6 @@ export default function MerchantPage() {
             </div>
         );
     }
-
     const refreshMerchant = async () => {
         if (!id) return;
 
@@ -465,7 +464,7 @@ export default function MerchantPage() {
                 summaryLoading={summaryLoading}
                 detections={detections}
                 onScoresUpdated={loadScores}
-                 onContactsUpdated={loadContacts}
+                onContactsUpdated={loadContacts}
             />
         </div>
     );

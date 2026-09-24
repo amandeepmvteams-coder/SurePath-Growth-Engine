@@ -11,6 +11,7 @@ export const merchantSchema = z.object({
     id: z.string(),
     domain: z.string(),
     platform: z.string().nullable(),
+    platform_confidence: z.string().nullable(),
     store_name: z.string().nullable(),
     country: z.string().nullable(),
     industry: z.string().nullable(),
@@ -32,7 +33,6 @@ export const merchantListItemSchema = merchantSchema.extend({
     score_factors_assessed: z.number().nullable(),
     score_factors_total: z.number().nullable(),
     opportunity_value: z.string().nullable(),
-    platform_confidence: z.string().nullable(),
     last_researched_at: z.string().nullable(),
 });
 

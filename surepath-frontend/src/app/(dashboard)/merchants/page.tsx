@@ -521,7 +521,8 @@ export default function Page() {
                                                     <div className="flex items-center justify-center gap-1.5">
                                                         {/* <span className="text-[10px]"></span> */}
                                                         <span>
-                                                            {merchant.platform_confidence !== null
+                                                            {merchant.platform?.toLowerCase() === "shopify" &&
+                                                                merchant.platform_confidence !== null
                                                                 ? `● ${Math.round(
                                                                     Number(merchant.platform_confidence) * 100
                                                                 )}%`

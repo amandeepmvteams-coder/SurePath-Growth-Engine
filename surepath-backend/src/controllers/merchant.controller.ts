@@ -98,7 +98,7 @@ class MerchantController {
         const merchant = await merchantService.updateMerchant(
             id,
             req.body,
-           req.user!.id
+            req.user!.id
         );
 
         if (!merchant) {

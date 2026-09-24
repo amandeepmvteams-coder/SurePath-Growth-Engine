@@ -10,6 +10,7 @@ export interface Merchant {
     id: string;
     domain: string;
     platform: string | null;
+    platform_confidence?: string | null;
     store_name: string | null;
     country: string | null;
     industry: string | null;

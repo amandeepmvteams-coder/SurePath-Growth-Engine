@@ -1,6 +1,9 @@
 import { merchantRepository } from "../repositories/merchant.repository";
+import { provenanceRepository } from "../repositories/merchant-provenance.repository";
 import { researchRunRepository } from "../repositories/research.repository";
 import { researchPageRepository } from "../repositories/research-run.repository";
+import { provenanceService } from "./merchant-provenance.service";
+import { platformDetectionService } from "./platform-detection.service";
 
 interface PageDefinition {
     path: string;
@@ -626,6 +629,55 @@ class ResearchService {
                 throw new Error(
                     "Merchant website could not be reached"
                 );
+            }
+
+            const researchPages =
+                await researchPageRepository.findByRunId(
+                    researchRun.id
+                );
+
+            const platformResult =
+                platformDetectionService.detect(
+                    researchPages
+                );
+
+            const currentPlatformProvenance =
+                await provenanceRepository.findCurrentByField(
+                    merchantId,
+                    "platform"
+                );
+
+            if (
+                !currentPlatformProvenance ||
+                !currentPlatformProvenance.is_manual_override
+            ) {
+                const platformValue =
+                    platformResult.platform === "unknown"
+                        ? null
+                        : platformResult.platform;
+
+                await merchantRepository.update(
+                    merchantId,
+                    {
+                        platform: platformValue,
+                    }
+                );
+
+                await provenanceService.recordProvenance({
+                    merchant_id: merchantId,
+                    field_key: "platform",
+                    value:
+                        platformResult.platform === "unknown"
+                            ? "unknown"
+                            : platformResult.platform,
+                    source: "research",
+                    confidence: Number(
+                        platformResult.confidence.toFixed(4)
+                    ),
+                    evidence: platformResult.evidence,
+                    verified_at: new Date(),
+                    is_manual_override: false,
+                });
             }
 
             await researchRunRepository.markCompleted(

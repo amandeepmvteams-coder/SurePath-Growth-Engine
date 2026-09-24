@@ -186,10 +186,25 @@ class MerchantRepository {
     async findById(id: string): Promise<Merchant | null> {
         const result = await pool.query(
             `
-      SELECT *
-      FROM merchants
-      WHERE id = $1
-      `,
+        SELECT
+            m.*,
+            platform_provenance.platform_confidence
+        FROM merchants m
+
+        LEFT JOIN LATERAL (
+            SELECT
+                mp.confidence AS platform_confidence
+            FROM merchant_provenance mp
+            WHERE mp.merchant_id = m.id
+              AND mp.field_key = 'platform'
+              AND mp.is_current = TRUE
+            ORDER BY mp.verified_at DESC NULLS LAST
+            LIMIT 1
+        ) platform_provenance
+            ON TRUE
+
+        WHERE m.id = $1
+        `,
             [id]
         );
 

@@ -73,10 +73,10 @@ export default function OverviewTab({
     const latestCompletedResearch = researchRuns.find(
         (run) => run.status === "completed"
     );
-    const shopifyDetection = detections.find(
-        (detection) =>
-            detection.provider_name.toLowerCase() === "shopify"
-    );
+    const platformConfidence =
+        typeof merchant.platform_confidence === "string"
+            ? Number(merchant.platform_confidence)
+            : null;
     useEffect(() => {
         const loadStatusHistory = async () => {
             try {
@@ -580,12 +580,11 @@ export default function OverviewTab({
 
                             <div>
                                 <p className="text-xs font-medium uppercase text-muted-foreground">
-                                    Shopify confidence
+                                    Platform confidence
                                 </p>
                                 <p className="mt-1 wrap-break-word text-sm">
-                                    {shopifyDetection?.confidence !== null &&
-                                        shopifyDetection?.confidence !== undefined
-                                        ? `${Math.round(shopifyDetection.confidence * 100)}%`
+                                    {platformConfidence !== null
+                                        ? `● ${Math.round(platformConfidence * 100)}%`
                                         : "—"}
                                 </p>
                             </div>
