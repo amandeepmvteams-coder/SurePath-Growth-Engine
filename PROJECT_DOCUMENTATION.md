@@ -1713,6 +1713,106 @@ The API has multiple response conventions, which is a real implementation detail
 
 ---
 
+## 37.1 Research-based ecommerce platform detection
+
+The project now includes a research-based platform detection layer that runs inside the existing research process rather than as a separate pipeline stage or API.
+
+### Backend implementation
+
+The platform detection logic is implemented in:
+
+- `surepath-backend/src/services/platform-detection.service.ts`
+- `surepath-backend/src/services/research-run.service.ts`
+
+#### How platform detection is invoked
+
+After research pages have been fetched and stored in `research_pages`, the backend performs platform detection before marking the research run as complete. The flow is:
+
+1. `researchService.researchMerchant(merchantId)` fetches the merchant homepage and policy pages.
+2. Each page result is persisted to `research_pages` via `researchPageRepository.create(...)`.
+3. `researchPageRepository.findByRunId(researchRun.id)` loads the stored pages for the current run.
+4. `platformDetectionService.detect(researchPages)` analyzes the collected HTML and product JSON content.
+5. The detected platform is written to `merchants.platform`.
+6. A provenance record is written to `merchant_provenance` with `field_key = 'platform'`.
+7. The research run is marked as completed.
+
+This means platform detection is treated as an output of Research, without creating a new pipeline or API surface.
+
+#### Detection logic
+
+The new detection service analyzes the raw research data already stored by the research process, including:
+
+- homepage HTML
+- product JSON (`/products.json`)
+- page content from other collected merchant pages
+- asset and script URL patterns embedded inside stored HTML content
+
+It evaluates rule-based signals for the supported platforms:
+
+- Shopify
+- WooCommerce
+- Magento / Adobe Commerce
+- BigCommerce
+- PrestaShop
+- OpenCart
+- unknown
+
+The detector uses a conservative multi-signal approach. A single trimmed string match is not enough to classify a store as Shopify; the implementation prefers stronger technical evidence such as Shopify CDN hosts, `window.Shopify`, Shopify runtime markers, `myshopify.com`, and related asset signatures. Similar logic is applied to WooCommerce and Magento markers.
+
+#### Platform persistence
+
+The detected platform is persisted using the existing merchant and provenance architecture rather than creating a platform-specific table.
+
+- `merchants.platform` is updated with the normalized platform name when evidence reaches the confidence threshold.
+- `merchant_provenance` is updated with the current platform record using the existing provenance pattern.
+- `field_key` is set to `platform`.
+- `source` is set to `research`.
+- `confidence` is stored in the same numeric convention used elsewhere in the project.
+- `evidence` contains the matched signals, related page URLs, and human-readable summary text.
+
+Manual override protection is preserved. If a platform has been manually overridden in `merchant_provenance`, automated research detection will not replace it.
+
+### Frontend implementation
+
+The frontend was updated to consume platform information from the merchant record rather than inferring the platform from provider detection records.
+
+Updated files:
+
+- `surepath-frontend/src/features/merchants/types/merchant.types.ts`
+- `surepath-frontend/src/app/(dashboard)/merchants/[id]/_components/overview-tab.tsx`
+
+#### Frontend behavior
+
+The merchant detail page now displays:
+
+- the merchant's current `platform` value
+- a `Platform confidence` value derived from `merchant.platform_confidence` (when available)
+
+The previous frontend assumption that a merchant was a Shopify merchant if a detection row existed with `provider_name === "shopify"` was removed. That assumption was incorrect because provider detection and platform detection are distinct concepts in the project architecture.
+
+The frontend now treats platform detection as a merchant-state concern rather than a provider-detection concern.
+
+### Project impact
+
+This implementation keeps the existing architecture intact:
+
+- No new platform pipeline stage was created.
+- No platform-specific API endpoint was added.
+- No new platform-detection pipeline was introduced.
+- Provider detection remains separate and unchanged.
+- Existing scoring continues to use `merchant.platform` without requiring a new scoring pipeline.
+
+### Verification
+
+The implementation was validated with the project's existing build tools:
+
+- `npm --prefix surepath-backend run build`
+- `npm --prefix surepath-frontend run build`
+
+Both builds completed successfully after the platform detection update.
+
+---
+
 ## 38. Known Limitations
 
 ### Product limitations
