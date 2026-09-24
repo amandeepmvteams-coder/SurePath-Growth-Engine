@@ -3,13 +3,13 @@ export interface MerchantListItem extends Merchant {
     score_factors_assessed: number | null;
     score_factors_total: number | null;
     opportunity_value: string | null;
-    platform_confidence: string | null;
     last_researched_at: string | null;
 }
 export interface Merchant {
     id: string;
     domain: string;
     platform: string | null;
+    platform_confidence: string | null;
     store_name: string | null;
     country: string | null;
     industry: string | null;

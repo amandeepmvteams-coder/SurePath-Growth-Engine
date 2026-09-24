@@ -5,7 +5,7 @@ import {
     createMerchantSchema,
     merchantSchema,
 } from "../schemas/merchant.schema";
-
+import { z } from "zod";
 import type {
     GetMerchantsParams,
     GetMerchantsResponse,
@@ -67,6 +67,5 @@ export async function updateMerchant(
         `/api/v1/merchants/${id}`,
         data
     );
-
     return merchantSchema.parse(response.data.data);
 }

@@ -183,32 +183,54 @@ class MerchantRepository {
         return result.rows;
     }
 
-    async findById(id: string): Promise<Merchant | null> {
-        const result = await pool.query(
+    private async getMerchantByIdQuery(
+        id: string,
+        client: PoolClient | typeof pool = pool
+    ): Promise<Merchant | null> {
+        const result = await client.query<Merchant>(
             `
-        SELECT
-            m.*,
-            platform_provenance.platform_confidence
-        FROM merchants m
-
-        LEFT JOIN LATERAL (
             SELECT
-                mp.confidence AS platform_confidence
-            FROM merchant_provenance mp
-            WHERE mp.merchant_id = m.id
-              AND mp.field_key = 'platform'
-              AND mp.is_current = TRUE
-            ORDER BY mp.verified_at DESC NULLS LAST
-            LIMIT 1
-        ) platform_provenance
-            ON TRUE
+                m.*,
 
-        WHERE m.id = $1
-        `,
+                CASE
+                    WHEN u.id IS NOT NULL THEN
+                        json_build_object(
+                            'id', u.id,
+                            'username', u.username,
+                            'display_name', u.display_name,
+                            'email', u.email
+                        )
+                    ELSE NULL
+                END AS assigned_rep,
+
+                platform_provenance.platform_confidence
+            FROM merchants m
+
+            LEFT JOIN users u
+                ON m.assigned_rep_id = u.id
+
+            LEFT JOIN LATERAL (
+                SELECT
+                    mp.confidence AS platform_confidence
+                FROM merchant_provenance mp
+                WHERE mp.merchant_id = m.id
+                  AND mp.field_key = 'platform'
+                  AND mp.is_current = TRUE
+                ORDER BY mp.verified_at DESC NULLS LAST
+                LIMIT 1
+            ) platform_provenance
+                ON TRUE
+
+            WHERE m.id = $1
+            `,
             [id]
         );
 
         return result.rows[0] || null;
+    }
+
+    async findById(id: string): Promise<Merchant | null> {
+        return this.getMerchantByIdQuery(id);
     }
 
     async findByDomain(domain: string): Promise<Merchant | null> {
@@ -225,7 +247,7 @@ class MerchantRepository {
     }
 
     async create(data: CreateMerchantData): Promise<Merchant> {
-        const result = await pool.query(
+        const result = await pool.query<{ id: string }>(
             `
       INSERT INTO merchants (
         domain,
@@ -236,7 +258,7 @@ class MerchantRepository {
         source
       )
       VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *
+      RETURNING id
       `,
             [
                 data.domain,
@@ -248,7 +270,14 @@ class MerchantRepository {
             ]
         );
 
-        return result.rows[0];
+        const merchant = result.rows[0];
+        const createdMerchant = await this.getMerchantByIdQuery(merchant.id);
+
+        if (!createdMerchant) {
+            throw new Error("Created merchant not found");
+        }
+
+        return createdMerchant;
     }
 
     async update(
@@ -278,27 +307,26 @@ class MerchantRepository {
             }
         });
 
+        const db = client ?? pool;
+
         if (fields.length === 0) {
-            return this.findById(id);
+            return this.getMerchantByIdQuery(id, db);
         }
 
         fields.push(`updated_at = NOW()`);
 
         values.push(id);
 
-        const db = client ?? pool;
-
-        const result = await db.query(
+        await db.query(
             `
-  UPDATE merchants
-  SET ${fields.join(", ")}
-  WHERE id = $${values.length}
-  RETURNING *
-  `,
+        UPDATE merchants
+        SET ${fields.join(", ")}
+        WHERE id = $${values.length}
+        `,
             values
         );
 
-        return result.rows[0] || null;
+        return this.getMerchantByIdQuery(id, db);
     }
 
     async delete(id: string): Promise<boolean> {
