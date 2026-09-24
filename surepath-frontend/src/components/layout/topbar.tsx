@@ -40,12 +40,12 @@ export function Topbar() {
       await logout();
 
       toast.success("Signed out successfully");
-
-      router.push("/login");
     } catch (error) {
       console.error("Logout failed:", error);
 
       toast.error("Failed to sign out");
+    } finally {
+      router.push("/login");
     }
   };
   return (

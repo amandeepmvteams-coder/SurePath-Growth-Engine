@@ -11,6 +11,7 @@ import { requireSession } from "../middleware/auth.middleware";
 import { validate } from "../middleware/validation.middleware";
 
 import {
+  loginValidator,
   changePasswordValidator,
 } from "../validators/auth.validator";
 
@@ -19,13 +20,14 @@ const router = Router();
 router.post(
   "/login",
   requireApiKey,
+  loginValidator,
+  validate,
   login
 );
 
 router.post(
   "/logout",
   requireApiKey,
-  requireSession,
   logout
 );
 

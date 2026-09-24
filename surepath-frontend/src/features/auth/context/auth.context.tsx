@@ -4,9 +4,11 @@ import {
     createContext,
     useContext,
     useEffect,
+    useRef,
     useState,
     type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 
 import { getCurrentUser, logout as logoutApi, } from "../api/auth.api";
 import type { AuthUser } from "../types/auth.types";
@@ -31,6 +33,8 @@ export function AuthProvider({
 }: AuthProviderProps) {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const router = useRouter();
+    const hasAuthRedirected = useRef(false);
 
     const refreshUser = async () => {
         try {
@@ -50,27 +54,50 @@ export function AuthProvider({
             setIsLoading(false);
         }
     };
+
     const logout = async () => {
         try {
             setIsLoading(true);
 
             await logoutApi();
-
-            setUser(null);
         } catch (error) {
             console.error("Logout failed:", error);
-
-            throw error;
         } finally {
+            hasAuthRedirected.current = false;
+            setUser(null);
             setIsLoading(false);
         }
     };
+
+    useEffect(() => {
+        const handleAuthExpired = () => {
+            if (hasAuthRedirected.current) {
+                return;
+            }
+
+            hasAuthRedirected.current = true;
+            setUser(null);
+            setIsLoading(false);
+
+            if (window.location.pathname !== "/login") {
+                router.replace("/login");
+            }
+        };
+
+        window.addEventListener("surepath-auth-expired", handleAuthExpired);
+
+        return () => {
+            window.removeEventListener("surepath-auth-expired", handleAuthExpired);
+        };
+    }, [router]);
+
     useEffect(() => {
         const loadUser = async () => {
             try {
                 const result = await getCurrentUser();
 
                 setUser(result.user);
+                hasAuthRedirected.current = false;
             } catch (error) {
                 console.error(
                     "Failed to restore session:",
@@ -78,6 +105,7 @@ export function AuthProvider({
                 );
 
                 setUser(null);
+                hasAuthRedirected.current = false;
             } finally {
                 setIsLoading(false);
             }

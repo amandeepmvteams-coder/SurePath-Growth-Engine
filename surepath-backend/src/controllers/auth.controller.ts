@@ -3,6 +3,32 @@ import crypto from "crypto";
 
 import { authService } from "../services/auth.service";
 
+const SESSION_COOKIE_NAME = "surepath_session";
+const SESSION_COOKIE_ATTRIBUTES =
+    "HttpOnly; Path=/; SameSite=None; Secure";
+
+const buildSessionCookie = (value: string, maxAge: number) =>
+    `${SESSION_COOKIE_NAME}=${value}; ${SESSION_COOKIE_ATTRIBUTES}; Max-Age=${maxAge}`;
+
+const extractSignedSession = (cookieHeader?: string): string | null => {
+    if (!cookieHeader) {
+        return null;
+    }
+
+    const cookies = Object.fromEntries(
+        cookieHeader.split(";").map((cookie) => {
+            const [key, ...value] = cookie.trim().split("=");
+
+            return [
+                key,
+                decodeURIComponent(value.join("=")),
+            ];
+        })
+    );
+
+    return cookies[SESSION_COOKIE_NAME] || null;
+};
+
 const signSessionToken = (token: string): string => {
     const secret = process.env.SESSION_SECRET;
 
@@ -46,7 +72,7 @@ export const login = async (
 
         res.setHeader(
             "Set-Cookie",
-            `surepath_session=${signedSession}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=None; Secure`
+            buildSessionCookie(signedSession, maxAge)
         );
 
         return res.status(200).json({
@@ -79,44 +105,29 @@ export const login = async (
     }
 };
 
-// Logout Controller 
 export const logout = async (
     req: Request,
     res: Response
 ) => {
     try {
-        const cookieHeader = req.headers.cookie;
+        const signedSession = extractSignedSession(req.headers.cookie);
 
-        if (cookieHeader) {
-            const cookies = Object.fromEntries(
-                cookieHeader.split(";").map((cookie) => {
-                    const [key, ...value] = cookie.trim().split("=");
+        if (signedSession) {
+            const lastDotIndex = signedSession.lastIndexOf(".");
 
-                    return [
-                        key,
-                        decodeURIComponent(value.join("=")),
-                    ];
-                })
-            );
+            if (lastDotIndex !== -1) {
+                const sessionToken = signedSession.substring(
+                    0,
+                    lastDotIndex
+                );
 
-            const signedSession = cookies.surepath_session;
-
-            if (signedSession) {
-                const lastDotIndex =
-                    signedSession.lastIndexOf(".");
-
-                if (lastDotIndex !== -1) {
-                    const sessionToken =
-                        signedSession.substring(0, lastDotIndex);
-
-                    await authService.logout(sessionToken);
-                }
+                await authService.logout(sessionToken).catch(() => undefined);
             }
         }
 
         res.setHeader(
             "Set-Cookie",
-            "surepath_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax"
+            buildSessionCookie("", 0)
         );
 
         return res.status(204).send();
