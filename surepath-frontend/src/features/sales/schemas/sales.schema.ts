@@ -9,7 +9,7 @@ export const salesTaskSchema = z.object({
     notes: z.string().nullable(),
     due_at: z.string().nullable(),
     completed_at: z.string().nullable(),
-    assigned_to: z.string().nullable(),
+    assigned_to: z.coerce.string().nullable(),
     assigned_to_id: z.string().nullable(),
     created_by: z.string(),
     created_at: z.string(),
