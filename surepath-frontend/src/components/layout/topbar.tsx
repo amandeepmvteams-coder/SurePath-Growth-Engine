@@ -3,7 +3,7 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown, Key, LogOut, TrendingUp } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +26,7 @@ import { useAuth } from "@/features/auth/context/auth.context";
 import { toast } from "sonner";
 
 export function Topbar() {
-  
+
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();

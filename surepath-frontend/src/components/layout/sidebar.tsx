@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CircleQuestionMark, TrendingUp } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 import { NAV_GROUPS, isNavItemActive, type NavItem } from "@/lib/navigation";
 
 function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
